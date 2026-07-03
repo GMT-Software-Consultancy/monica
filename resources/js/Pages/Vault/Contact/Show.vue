@@ -132,15 +132,15 @@ const destroyAvatar = () => {
     });
 };
 
-const download = () => {
-  router.post(props.data.url.download_vcard, null, {
+const downloadFile = (url) => {
+  router.post(url, null, {
     preserveScroll: true,
     onSuccess: (response) => {
       const filename = response.props.jetstream.flash.filename;
       if (filename !== undefined) {
-        const url = window.URL.createObjectURL(new Blob([response.props.jetstream.flash.data]));
+        const fileUrl = window.URL.createObjectURL(new Blob([response.props.jetstream.flash.data]));
         const link = document.createElement('a');
-        link.href = url;
+        link.href = fileUrl;
         link.setAttribute('download', filename);
         try {
           document.body.appendChild(link);
@@ -151,6 +151,14 @@ const download = () => {
       }
     },
   });
+};
+
+const download = () => {
+  downloadFile(props.data.url.download_vcard);
+};
+
+const downloadJson = () => {
+  downloadFile(props.data.url.download_json);
 };
 
 const selectedOption = ref('');
@@ -273,6 +281,12 @@ const navigateToSelected = () => {
               <li class="mb-2">
                 <Link @click.prevent="download()" class="cursor-pointer text-blue-500 hover:underline">
                   {{ $t('Download as vCard') }}
+                </Link>
+              </li>
+              <!-- download as json -->
+              <li class="mb-2">
+                <Link @click.prevent="downloadJson()" class="cursor-pointer text-blue-500 hover:underline">
+                  {{ $t('Download as JSON') }}
                 </Link>
               </li>
               <!-- delete contact -->

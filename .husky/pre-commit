@@ -1,1 +1,9 @@
-yarn lint-staged
+if command -v yarn > /dev/null 2>&1; then
+    yarn lint-staged
+elif [ -x ./sail ]; then
+    ./sail yarn lint-staged
+else
+    echo "yarn is not installed, and ./sail is not available to run it in Docker instead." >&2
+    echo "Install Node.js/Yarn, or start Laravel Sail (./sail up -d), then try committing again." >&2
+    exit 1
+fi

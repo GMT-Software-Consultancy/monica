@@ -92,6 +92,10 @@ class ContactShowViewHelper
                     'vault' => $contact->vault,
                     'contact' => $contact,
                 ]),
+                'download_json' => route('contact.json.download', [
+                    'vault' => $contact->vault,
+                    'contact' => $contact,
+                ]),
             ],
         ];
     }
@@ -143,6 +147,10 @@ class ContactShowViewHelper
                     'contact' => $contact->id,
                 ]),
                 'download_vcard' => route('contact.vcard.download', [
+                    'vault' => $contact->vault,
+                    'contact' => $contact,
+                ]),
+                'download_json' => route('contact.json.download', [
                     'vault' => $contact->vault,
                     'contact' => $contact,
                 ]),
