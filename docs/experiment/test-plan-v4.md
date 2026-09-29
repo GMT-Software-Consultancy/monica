@@ -42,12 +42,16 @@ details.
 
 ## Arms
 
-| Arm | Steps | Architecture document | Fence rule |
-|---|---|---|---|
-| 0: Prompt | Seed → plan → code | No | – |
-| A: No architecture | Seed → spec → tickets → code | No | – |
-| B: Architecture | Seed → spec → tickets → code | Yes | Off |
-| C: Fenced architecture | Seed → spec → tickets → code | Yes | On |
+| Arm | Branch name | Steps | Architecture document | Fence rule |
+|---|---|---|---|---|
+| 0a: Prompt only | `prompt_only` | Seed → code | No | – |
+| 0b: Prompt + plan | `prompt_plan` | Seed → plan → code | No | – |
+| A: No architecture | `no_architecture` | Seed → spec → tickets → code | No | – |
+| B: Architecture | `with_architecture` | Seed → spec → tickets → code | Yes | Off |
+| C: Fenced architecture | `fenced_architecture` | Seed → spec → tickets → code | Yes | On |
+
+Code-stage branches are named `exp/<feature>/<branch name>`, for example
+`exp/full-record/fenced_architecture`. See `runs/README.md`.
 
 Only one thing changes between arms A, B and C. Every arm gets the same model, seed and
 strategy document. The architecture document is Garry's (`Arch_1`). A later arm repeats C
