@@ -153,6 +153,28 @@ const download = () => {
   });
 };
 
+// the file is only created in the browser once the whole export has been received,
+// so a failed export never produces a file, not even a partial one
+const downloadFullExport = () => {
+  axios
+    .get(props.data.url.download_full_export)
+    .then((response) => {
+      const url = window.URL.createObjectURL(
+        new Blob([response.data.data.content], { type: 'application/json;charset=utf-8' }),
+      );
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', response.data.data.filename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    })
+    .catch(() => {
+      flash(trans('The export failed. Please try again.'), 'error');
+    });
+};
+
 const selectedOption = ref('');
 
 onMounted(() => {
@@ -273,6 +295,12 @@ const navigateToSelected = () => {
               <li class="mb-2">
                 <Link @click.prevent="download()" class="cursor-pointer text-blue-500 hover:underline">
                   {{ $t('Download as vCard') }}
+                </Link>
+              </li>
+              <!-- download full export -->
+              <li class="mb-2">
+                <Link @click.prevent="downloadFullExport()" class="cursor-pointer text-blue-500 hover:underline">
+                  {{ $t('Download full export (JSON)') }}
                 </Link>
               </li>
               <!-- delete contact -->
