@@ -1,0 +1,1 @@
+People want to take a full copy of a contact out of Monica. The vCard download only gives the address-book details. They want everything they have recorded about that person: notes, relationships, reminders and important dates. They want it as a file they can keep or use in other tools, downloaded from the contact's page.

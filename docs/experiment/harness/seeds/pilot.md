@@ -1,0 +1,1 @@
+People who use Monica have asked for another way to get a contact's details out. Today you can download a contact as a vCard. That works for address books, but people who want to use their contact data in other tools or in their own scripts find vCard hard to work with. They would like to download a contact as JSON too, from the same place they download the vCard.
