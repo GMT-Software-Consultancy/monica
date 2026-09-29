@@ -153,6 +153,27 @@ const download = () => {
   });
 };
 
+// the server sends the export as a JSON file; it is saved under the file name the server gives
+const exportContact = () => {
+  axios
+    .post(props.data.url.export, null, { responseType: 'blob' })
+    .then((response) => {
+      const disposition = response.headers['content-disposition'] ?? '';
+      const filename = disposition.match(/filename="([^"]+)"/)?.[1] ?? 'contact.json';
+      const url = window.URL.createObjectURL(response.data);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    })
+    .catch(() => {
+      flash(trans('The export failed. Please try again.'), 'error');
+    });
+};
+
 const selectedOption = ref('');
 
 onMounted(() => {
@@ -273,6 +294,12 @@ const navigateToSelected = () => {
               <li class="mb-2">
                 <Link @click.prevent="download()" class="cursor-pointer text-blue-500 hover:underline">
                   {{ $t('Download as vCard') }}
+                </Link>
+              </li>
+              <!-- export -->
+              <li class="mb-2">
+                <Link @click.prevent="exportContact()" class="cursor-pointer text-blue-500 hover:underline">
+                  {{ $t('Export') }}
                 </Link>
               </li>
               <!-- delete contact -->

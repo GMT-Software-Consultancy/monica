@@ -4,6 +4,7 @@ use App\Domains\Contact\ManageAvatar\Web\Controllers\ModuleAvatarController;
 use App\Domains\Contact\ManageCalls\Web\Controllers\ContactModuleCallController;
 use App\Domains\Contact\ManageContact\Web\Controllers\ContactArchiveController;
 use App\Domains\Contact\ManageContact\Web\Controllers\ContactController;
+use App\Domains\Contact\ManageContact\Web\Controllers\ContactExportController;
 use App\Domains\Contact\ManageContact\Web\Controllers\ContactFavoriteController;
 use App\Domains\Contact\ManageContact\Web\Controllers\ContactLabelController;
 use App\Domains\Contact\ManageContact\Web\Controllers\ContactMoveController;
@@ -255,6 +256,7 @@ Route::middleware([
                     Route::delete('', [ContactController::class, 'destroy'])->name('contact.destroy');
 
                     Route::post('vcard', [ContactVCardController::class, 'download'])->name('contact.vcard.download')->withoutMiddleware([HandleInertiaRequests::class]);
+                    Route::post('export', [ContactExportController::class, 'download'])->name('contact.export.download')->withoutMiddleware([HandleInertiaRequests::class]);
 
                     // quick facts
                     Route::get('quickFacts/{template}', [ContactQuickFactController::class, 'show'])->name('contact.quick_fact.show');
