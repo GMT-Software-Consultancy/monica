@@ -13,6 +13,7 @@ const form = useForm({
   show_companies_tab: props.data.visibility.show_companies_tab,
   show_reports_tab: props.data.visibility.show_reports_tab,
   show_calendar_tab: props.data.visibility.show_calendar_tab,
+  show_gifts_tab: props.data.visibility.show_gifts_tab,
 });
 
 const update = () => {
@@ -115,6 +116,20 @@ const update = () => {
             <div
               class="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:right-[22px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-blue-600 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-hidden peer-focus:ring-4 peer-focus:ring-blue-300 dark:border-gray-600 dark:bg-gray-800 dark:peer-focus:ring-blue-800" />
             <span class="ms-3 dark:text-gray-300"> {{ $t('Show Tasks tab') }} </span>
+          </label>
+        </li>
+        <li
+          class="item-list border-b border-gray-200 p-3 hover:bg-slate-50 dark:border-gray-700 dark:bg-slate-900 dark:hover:bg-slate-800">
+          <label for="toggle-gifts" class="relative inline-flex cursor-pointer items-center">
+            <input
+              id="toggle-gifts"
+              v-model="form.show_gifts_tab"
+              type="checkbox"
+              class="peer hidden"
+              @change="update" />
+            <div
+              class="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:right-[22px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-blue-600 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-hidden peer-focus:ring-4 peer-focus:ring-blue-300 dark:border-gray-600 dark:bg-gray-800 dark:peer-focus:ring-blue-800" />
+            <span class="ms-3 dark:text-gray-300"> {{ $t('Show Gifts tab') }} </span>
           </label>
         </li>
         <li

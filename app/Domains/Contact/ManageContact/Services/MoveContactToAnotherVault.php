@@ -52,6 +52,7 @@ class MoveContactToAnotherVault extends BaseService implements ServiceInterface
         $this->validate();
         $this->move();
         $this->moveCompanyInformation();
+        $this->moveGifts();
         $this->updateLastEditedDate();
 
         return $this->contact;
@@ -104,6 +105,26 @@ class MoveContactToAnotherVault extends BaseService implements ServiceInterface
 
                 $this->contact->company_id = $newCompany->id;
                 $this->contact->save();
+            }
+        }
+    }
+
+    /**
+     * A gift and all its recipients always belong to the same vault.
+     * If the contact is the only recipient of a gift, the gift moves with the
+     * contact. Otherwise, the contact is removed from the gift, which stays in
+     * the old vault with its other recipients.
+     */
+    private function moveGifts(): void
+    {
+        $gifts = $this->contact->gifts()->withCount('recipients')->get();
+
+        foreach ($gifts as $gift) {
+            if ($gift->recipients_count <= 1) {
+                $gift->vault_id = $this->newVault->id;
+                $gift->save();
+            } else {
+                $gift->recipients()->detach($this->contact->id);
             }
         }
     }

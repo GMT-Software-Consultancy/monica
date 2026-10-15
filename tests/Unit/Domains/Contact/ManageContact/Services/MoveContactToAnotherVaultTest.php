@@ -7,6 +7,8 @@ use App\Exceptions\NotEnoughPermissionException;
 use App\Models\Account;
 use App\Models\Company;
 use App\Models\Contact;
+use App\Models\Gift;
+use App\Models\GiftOccasion;
 use App\Models\User;
 use App\Models\Vault;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -153,6 +155,35 @@ class MoveContactToAnotherVaultTest extends TestCase
         $contact = Contact::factory()->create(['vault_id' => $vault->id]);
 
         $this->executeService($regis, $regis->account, $vault, $newVault, $contact);
+    }
+
+    /** @test */
+    public function it_moves_the_gifts_of_the_contact_and_keeps_shared_gifts_in_the_old_vault(): void
+    {
+        $regis = $this->createUser();
+        $vault = $this->createVault($regis->account);
+        $vault = $this->setPermissionInVault($regis, Vault::PERMISSION_EDIT, $vault);
+        $newVault = $this->createVault($regis->account);
+        $newVault = $this->setPermissionInVault($regis, Vault::PERMISSION_EDIT, $newVault);
+        $anna = Contact::factory()->create(['vault_id' => $vault->id]);
+        $ben = Contact::factory()->create(['vault_id' => $vault->id]);
+        $birthday = GiftOccasion::factory()->create(['account_id' => $regis->account_id]);
+
+        $book = Gift::factory()->create(['vault_id' => $vault->id, 'gift_occasion_id' => $birthday->id]);
+        $book->recipients()->sync([$anna->id]);
+        $scarf = Gift::factory()->create(['vault_id' => $vault->id, 'given_at' => '2025-12-10']);
+        $scarf->recipients()->sync([$anna->id]);
+        $weddingPresent = Gift::factory()->create(['vault_id' => $vault->id]);
+        $weddingPresent->recipients()->sync([$anna->id, $ben->id]);
+
+        $this->executeService($regis, $regis->account, $vault, $newVault, $anna);
+
+        $this->assertDatabaseHas('gifts', ['id' => $book->id, 'vault_id' => $newVault->id, 'gift_occasion_id' => $birthday->id]);
+        $this->assertDatabaseHas('gifts', ['id' => $scarf->id, 'vault_id' => $newVault->id]);
+        $this->assertDatabaseHas('contact_gift', ['gift_id' => $book->id, 'contact_id' => $anna->id]);
+
+        $this->assertDatabaseHas('gifts', ['id' => $weddingPresent->id, 'vault_id' => $vault->id]);
+        $this->assertEquals([$ben->id], $weddingPresent->recipients()->pluck('contacts.id')->all());
     }
 
     private function executeService(User $author, Account $account, Vault $vault, Vault $newVault, Contact $contact): void

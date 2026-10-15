@@ -19,6 +19,7 @@ import Labels from '@/Shared/Modules/Labels.vue';
 import Reminders from '@/Shared/Modules/Reminders.vue';
 import Feed from '@/Shared/Modules/Feed.vue';
 import Loans from '@/Shared/Modules/Loans.vue';
+import Gifts from '@/Shared/Modules/Gifts.vue';
 import JobInformation from '@/Shared/Modules/JobInformation.vue';
 import Relationships from '@/Shared/Modules/Relationships.vue';
 import Tasks from '@/Shared/Modules/Tasks.vue';
@@ -352,6 +353,8 @@ const navigateToSelected = () => {
                 <Feed v-else-if="module.type === 'feed'" :url="module.data" />
 
                 <Loans v-else-if="module.type === 'loans'" :data="module.data" :layout-data="layoutData" />
+
+                <Gifts v-else-if="module.type === 'gifts'" :data="module.data" :layout-data="layoutData" />
 
                 <Relationships v-else-if="module.type === 'relationships'" :data="module.data" />
 

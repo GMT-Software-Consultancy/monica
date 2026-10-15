@@ -9,6 +9,7 @@ use App\Domains\Contact\ManageContactImportantDates\Web\ViewHelpers\ModuleImport
 use App\Domains\Contact\ManageContactInformation\Web\ViewHelpers\ModuleContactInformationViewHelper;
 use App\Domains\Contact\ManageContactName\Web\ViewHelpers\ModuleContactNameViewHelper;
 use App\Domains\Contact\ManageDocuments\Web\ViewHelpers\ModuleDocumentsViewHelper;
+use App\Domains\Contact\ManageGifts\Web\ViewHelpers\ModuleGiftViewHelper;
 use App\Domains\Contact\ManageGoals\Web\ViewHelpers\ModuleGoalsViewHelper;
 use App\Domains\Contact\ManageGroups\Web\ViewHelpers\GroupsViewHelper;
 use App\Domains\Contact\ManageGroups\Web\ViewHelpers\ModuleGroupsViewHelper;
@@ -252,6 +253,10 @@ class ContactShowViewHelper
 
             if ($module->type == Module::TYPE_LOANS) {
                 $data = ModuleLoanViewHelper::data($contact, $user);
+            }
+
+            if ($module->type == Module::TYPE_GIFTS) {
+                $data = ModuleGiftViewHelper::data($contact, $user);
             }
 
             if ($module->type == Module::TYPE_RELATIONSHIPS) {

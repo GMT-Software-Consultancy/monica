@@ -4,6 +4,7 @@ namespace App\Domains\Contact\ManageContact\Services;
 
 use App\Exceptions\CantBeDeletedException;
 use App\Interfaces\ServiceInterface;
+use App\Models\Gift;
 use App\Services\QueuableService;
 
 class DestroyContact extends QueuableService implements ServiceInterface
@@ -46,8 +47,29 @@ class DestroyContact extends QueuableService implements ServiceInterface
         }
 
         $this->destroyFiles();
+        $this->detachGifts();
 
         $this->contact->delete();
+    }
+
+    /**
+     * The contact is soft deleted, so the database does not cascade the
+     * deletion to the gifts. Remove the contact from every gift, then delete
+     * the gifts that have no recipient left.
+     */
+    private function detachGifts(): void
+    {
+        $giftIds = $this->contact->gifts()->pluck('gifts.id');
+
+        if ($giftIds->isEmpty()) {
+            return;
+        }
+
+        $this->contact->gifts()->detach();
+
+        Gift::whereIn('id', $giftIds)
+            ->whereDoesntHave('recipients')
+            ->delete();
     }
 
     private function destroyFiles(): void

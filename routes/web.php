@@ -18,6 +18,7 @@ use App\Domains\Contact\ManageContactFeed\Web\Controllers\ContactFeedController;
 use App\Domains\Contact\ManageContactImportantDates\Web\Controllers\ContactImportantDatesController;
 use App\Domains\Contact\ManageContactInformation\Web\Controllers\ContactInformationController;
 use App\Domains\Contact\ManageDocuments\Web\Controllers\ContactModuleDocumentController;
+use App\Domains\Contact\ManageGifts\Web\Controllers\ContactModuleGiftController;
 use App\Domains\Contact\ManageGoals\Web\Controllers\ContactGoalController;
 use App\Domains\Contact\ManageGoals\Web\Controllers\ContactModuleGoalController;
 use App\Domains\Contact\ManageGoals\Web\Controllers\ContactModuleStreakController;
@@ -98,6 +99,7 @@ use App\Domains\Settings\ManageUsers\Web\Controllers\UserController;
 use App\Domains\Vault\ManageCalendar\Web\Controllers\VaultCalendarController;
 use App\Domains\Vault\ManageCompanies\Web\Controllers\VaultCompanyController;
 use App\Domains\Vault\ManageFiles\Web\Controllers\VaultFileController;
+use App\Domains\Vault\ManageGifts\Web\Controllers\VaultGiftController;
 use App\Domains\Vault\ManageJournals\Web\Controllers\JournalController;
 use App\Domains\Vault\ManageJournals\Web\Controllers\JournalMetricController;
 use App\Domains\Vault\ManageJournals\Web\Controllers\JournalPhotoController;
@@ -213,6 +215,9 @@ Route::middleware([
 
             // tasks
             Route::get('tasks', [VaultTaskController::class, 'index'])->name('vault.tasks.index');
+
+            // gifts
+            Route::get('gifts', [VaultGiftController::class, 'index'])->name('vault.gifts.index');
 
             // reports
             Route::prefix('reports')->group(function () {
@@ -333,6 +338,11 @@ Route::middleware([
                     Route::put('loans/{loan}', [ContactModuleLoanController::class, 'update'])->name('contact.loan.update');
                     Route::put('loans/{loan}/toggle', [ContactModuleToggleLoanController::class, 'update'])->name('contact.loan.toggle');
                     Route::delete('loans/{loan}', [ContactModuleLoanController::class, 'destroy'])->name('contact.loan.destroy');
+
+                    // gifts
+                    Route::post('gifts', [ContactModuleGiftController::class, 'store'])->name('contact.gift.store');
+                    Route::put('gifts/{gift}', [ContactModuleGiftController::class, 'update'])->name('contact.gift.update');
+                    Route::delete('gifts/{gift}', [ContactModuleGiftController::class, 'destroy'])->name('contact.gift.destroy');
 
                     // job information
                     Route::get('companies/list', [ContactModuleJobInformationController::class, 'index'])->name('contact.companies.list.index');

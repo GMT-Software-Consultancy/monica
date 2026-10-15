@@ -4,7 +4,9 @@ namespace Tests\Unit\Domains\Settings\CreateAccount\Services;
 
 use App\Domains\Settings\CreateAccount\Jobs\SetupAccount;
 use App\Models\Currency;
+use App\Models\Module;
 use App\Models\RelationshipGroupType;
+use App\Models\TemplatePage;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
@@ -89,6 +91,12 @@ class SetupAccountTest extends TestCase
         $this->assertDatabaseHas('modules', [
             'account_id' => $user->account_id,
             'name_translation_key' => 'Loans',
+        ]);
+        $this->assertDatabaseHas('modules', [
+            'account_id' => $user->account_id,
+            'name_translation_key' => 'Gifts',
+            'type' => 'gifts',
+            'can_be_deleted' => false,
         ]);
         $this->assertDatabaseHas('modules', [
             'account_id' => $user->account_id,
@@ -251,5 +259,27 @@ class SetupAccountTest extends TestCase
             'translation_key' => 'Christian',
             'position' => 1,
         ]);
+    }
+
+    /** @test */
+    public function it_puts_the_gifts_module_right_after_loans_on_the_information_page(): void
+    {
+        Mail::fake();
+        $user = $this->createAdministrator();
+
+        SetupAccount::dispatchSync([
+            'account_id' => $user->account->id,
+            'author_id' => $user->id,
+        ]);
+
+        $page = TemplatePage::whereHas('template', fn ($query) => $query->where('account_id', $user->account_id))
+            ->where('name_translation_key', 'Information')
+            ->sole();
+
+        $types = $page->modules()->orderBy('position')->pluck('type')->values();
+        $loansIndex = $types->search(Module::TYPE_LOANS);
+
+        $this->assertNotFalse($loansIndex);
+        $this->assertEquals(Module::TYPE_GIFTS, $types[$loansIndex + 1]);
     }
 }

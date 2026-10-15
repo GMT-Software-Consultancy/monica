@@ -261,6 +261,17 @@ class Contact extends VCardResource
     }
 
     /**
+     * Get the gifts the contact is a recipient of.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany<\App\Models\Gift, $this>
+     */
+    public function gifts(): BelongsToMany
+    {
+        return $this->belongsToMany(Gift::class, 'contact_gift')
+            ->withTimestamps();
+    }
+
+    /**
      * Get the company associated with the contact.
      *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo<\App\Models\Company, $this>

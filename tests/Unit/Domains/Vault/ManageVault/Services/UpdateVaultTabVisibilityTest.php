@@ -70,6 +70,43 @@ class UpdateVaultTabVisibilityTest extends TestCase
         $this->executeService($ross, $ross->account, $vault);
     }
 
+    /** @test */
+    public function it_turns_the_gifts_tab_back_on(): void
+    {
+        $ross = $this->createUser();
+        $vault = $this->createVault($ross->account);
+        $vault = $this->setPermissionInVault($ross, Vault::PERMISSION_MANAGE, $vault);
+        $vault->show_gifts_tab = false;
+        $vault->save();
+
+        (new UpdateVaultTabVisibility)->execute([
+            'account_id' => $ross->account_id,
+            'author_id' => $ross->id,
+            'vault_id' => $vault->id,
+            'show_group_tab' => true,
+            'show_tasks_tab' => true,
+            'show_files_tab' => true,
+            'show_journal_tab' => true,
+            'show_companies_tab' => true,
+            'show_reports_tab' => true,
+            'show_calendar_tab' => true,
+            'show_gifts_tab' => true,
+        ]);
+
+        $this->assertTrue($vault->refresh()->show_gifts_tab);
+    }
+
+    /** @test */
+    public function it_fails_if_user_is_only_an_editor_in_the_vault(): void
+    {
+        $this->expectException(NotEnoughPermissionException::class);
+
+        $ross = $this->createUser();
+        $vault = $this->createVault($ross->account);
+        $vault = $this->setPermissionInVault($ross, Vault::PERMISSION_EDIT, $vault);
+        $this->executeService($ross, $ross->account, $vault);
+    }
+
     private function executeService(User $author, Account $account, Vault $vault): void
     {
         $request = [
@@ -83,6 +120,7 @@ class UpdateVaultTabVisibilityTest extends TestCase
             'show_companies_tab' => true,
             'show_reports_tab' => true,
             'show_calendar_tab' => true,
+            'show_gifts_tab' => false,
         ];
 
         $vault = (new UpdateVaultTabVisibility)->execute($request);
@@ -97,6 +135,7 @@ class UpdateVaultTabVisibilityTest extends TestCase
             'show_companies_tab' => true,
             'show_reports_tab' => true,
             'show_calendar_tab' => true,
+            'show_gifts_tab' => false,
         ]);
     }
 }
