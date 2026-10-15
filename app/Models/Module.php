@@ -64,6 +64,8 @@ class Module extends Model
 
     public const TYPE_LIFE_EVENTS = 'life_events';
 
+    public const TYPE_GIFTS = 'gifts';
+
     /**
      * The attributes that are mass assignable.
      *

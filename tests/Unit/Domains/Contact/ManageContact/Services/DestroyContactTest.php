@@ -8,6 +8,7 @@ use App\Exceptions\NotEnoughPermissionException;
 use App\Models\Account;
 use App\Models\Contact;
 use App\Models\File;
+use App\Models\Gift;
 use App\Models\User;
 use App\Models\Vault;
 use Carbon\Carbon;
@@ -36,6 +37,26 @@ class DestroyContactTest extends TestCase
         $contact->files()->save($file);
 
         $this->executeService($regis, $regis->account, $vault, $contact);
+    }
+
+    /** @test */
+    public function it_keeps_a_gift_for_its_other_recipients(): void
+    {
+        $regis = $this->createUser();
+        $vault = $this->createVault($regis->account);
+        $vault = $this->setPermissionInVault($regis, Vault::PERMISSION_EDIT, $vault);
+        $contact = Contact::factory()->create(['vault_id' => $vault->id]);
+        $other = Contact::factory()->create(['vault_id' => $vault->id]);
+        $sharedGift = Gift::factory()->create(['vault_id' => $vault->id]);
+        $sharedGift->recipients()->attach([$contact->id, $other->id]);
+        $ownGift = Gift::factory()->create(['vault_id' => $vault->id]);
+        $ownGift->recipients()->attach($contact->id);
+
+        $this->executeService($regis, $regis->account, $vault, $contact);
+
+        $this->assertDatabaseHas('gifts', ['id' => $sharedGift->id]);
+        $this->assertEquals([$other->id], $sharedGift->recipients()->pluck('contacts.id')->all());
+        $this->assertDatabaseMissing('gifts', ['id' => $ownGift->id]);
     }
 
     /** @test */

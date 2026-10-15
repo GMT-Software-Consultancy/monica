@@ -3,8 +3,10 @@
 namespace App\Domains\Settings\ManageGiftStates\Services;
 
 use App\Interfaces\ServiceInterface;
+use App\Models\Gift;
 use App\Models\GiftState;
 use App\Services\BaseService;
+use Illuminate\Validation\ValidationException;
 
 class DestroyGiftState extends BaseService implements ServiceInterface
 {
@@ -42,6 +44,12 @@ class DestroyGiftState extends BaseService implements ServiceInterface
 
         $this->giftState = $this->account()->giftStates()
             ->findOrFail($data['gift_state_id']);
+
+        if (Gift::where('gift_state_id', $this->giftState->id)->exists()) {
+            throw ValidationException::withMessages([
+                'gift_state_id' => __('Some gifts are at this stage. Move those gifts to another stage first.'),
+            ]);
+        }
 
         $this->giftState->delete();
 

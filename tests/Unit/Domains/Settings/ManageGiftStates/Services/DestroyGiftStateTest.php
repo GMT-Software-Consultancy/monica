@@ -5,6 +5,7 @@ namespace Tests\Unit\Domains\Settings\ManageGiftStates\Services;
 use App\Domains\Settings\ManageGiftStates\Services\DestroyGiftState;
 use App\Exceptions\NotEnoughPermissionException;
 use App\Models\Account;
+use App\Models\Gift;
 use App\Models\GiftState;
 use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -24,6 +25,30 @@ class DestroyGiftStateTest extends TestCase
             'account_id' => $ross->account_id,
         ]);
         $this->executeService($ross, $ross->account, $giftState);
+    }
+
+    /** @test */
+    public function it_does_not_destroy_a_gift_state_that_gifts_use(): void
+    {
+        $ross = $this->createAdministrator();
+        $giftState = GiftState::factory()->create([
+            'account_id' => $ross->account_id,
+        ]);
+        Gift::factory()->create(['gift_state_id' => $giftState->id]);
+
+        try {
+            (new DestroyGiftState)->execute([
+                'account_id' => $ross->account_id,
+                'author_id' => $ross->id,
+                'gift_state_id' => $giftState->id,
+            ]);
+            $this->fail('A validation exception was expected');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('gift_state_id', $e->errors());
+            $this->assertStringContainsString('Move those gifts to another stage first', $e->errors()['gift_state_id'][0]);
+        }
+
+        $this->assertDatabaseHas('gift_states', ['id' => $giftState->id]);
     }
 
     /** @test */

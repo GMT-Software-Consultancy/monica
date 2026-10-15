@@ -60,6 +60,35 @@ class UpdateVaultTabVisibilityTest extends TestCase
     }
 
     /** @test */
+    public function it_switches_the_gifts_tab_off_and_on(): void
+    {
+        $ross = $this->createUser();
+        $vault = $this->createVault($ross->account);
+        $vault = $this->setPermissionInVault($ross, Vault::PERMISSION_MANAGE, $vault);
+
+        $request = [
+            'account_id' => $ross->account->id,
+            'author_id' => $ross->id,
+            'vault_id' => $vault->id,
+            'show_group_tab' => true,
+            'show_tasks_tab' => true,
+            'show_files_tab' => true,
+            'show_journal_tab' => true,
+            'show_companies_tab' => true,
+            'show_reports_tab' => true,
+            'show_calendar_tab' => true,
+            'show_gifts_tab' => false,
+        ];
+
+        (new UpdateVaultTabVisibility)->execute($request);
+        $this->assertFalse($vault->fresh()->show_gifts_tab);
+
+        $request['show_gifts_tab'] = true;
+        (new UpdateVaultTabVisibility)->execute($request);
+        $this->assertTrue($vault->fresh()->show_gifts_tab);
+    }
+
+    /** @test */
     public function it_fails_if_user_doesnt_have_right_permission_in_vault(): void
     {
         $this->expectException(NotEnoughPermissionException::class);

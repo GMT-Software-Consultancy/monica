@@ -5,6 +5,7 @@ namespace Tests\Unit\Domains\Settings\ManageGiftOccasions\Services;
 use App\Domains\Settings\ManageGiftOccasions\Services\DestroyGiftOccasion;
 use App\Exceptions\NotEnoughPermissionException;
 use App\Models\Account;
+use App\Models\Gift;
 use App\Models\GiftOccasion;
 use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -24,6 +25,29 @@ class DestroyGiftOccasionTest extends TestCase
             'account_id' => $ross->account_id,
         ]);
         $this->executeService($ross, $ross->account, $giftOccasion);
+    }
+
+    /** @test */
+    public function gifts_keep_their_details_when_their_occasion_is_destroyed(): void
+    {
+        $ross = $this->createAdministrator();
+        $giftOccasion = GiftOccasion::factory()->create([
+            'account_id' => $ross->account_id,
+        ]);
+        $gift = Gift::factory()->create([
+            'gift_occasion_id' => $giftOccasion->id,
+            'estimated_price' => 40,
+            'description' => 'A note',
+        ]);
+
+        $this->executeService($ross, $ross->account, $giftOccasion);
+
+        $this->assertDatabaseHas('gifts', [
+            'id' => $gift->id,
+            'gift_occasion_id' => null,
+            'estimated_price' => 40,
+            'description' => 'A note',
+        ]);
     }
 
     /** @test */

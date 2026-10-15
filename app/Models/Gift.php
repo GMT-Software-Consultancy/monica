@@ -1,0 +1,91 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+
+class Gift extends Model
+{
+    use HasFactory;
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var list<string>
+     */
+    protected $fillable = [
+        'vault_id',
+        'gift_occasion_id',
+        'gift_state_id',
+        'currency_id',
+        'name',
+        'description',
+        'estimated_price',
+        'url',
+        'given_at',
+    ];
+
+    /**
+     * The attributes that should be cast to native types.
+     *
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'estimated_price' => 'integer',
+        'given_at' => 'date',
+    ];
+
+    /**
+     * Get the vault associated with the gift.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo<\App\Models\Vault, $this>
+     */
+    public function vault(): BelongsTo
+    {
+        return $this->belongsTo(Vault::class);
+    }
+
+    /**
+     * Get the gift occasion associated with the gift.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo<\App\Models\GiftOccasion, $this>
+     */
+    public function giftOccasion(): BelongsTo
+    {
+        return $this->belongsTo(GiftOccasion::class);
+    }
+
+    /**
+     * Get the gift stage associated with the gift.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo<\App\Models\GiftState, $this>
+     */
+    public function giftState(): BelongsTo
+    {
+        return $this->belongsTo(GiftState::class);
+    }
+
+    /**
+     * Get the currency associated with the gift.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo<\App\Models\Currency, $this>
+     */
+    public function currency(): BelongsTo
+    {
+        return $this->belongsTo(Currency::class);
+    }
+
+    /**
+     * Get the contacts the gift is for.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany<\App\Models\Contact, $this>
+     */
+    public function recipients(): BelongsToMany
+    {
+        return $this->belongsToMany(Contact::class, 'contact_gift', 'gift_id', 'contact_id')
+            ->withTimestamps();
+    }
+}

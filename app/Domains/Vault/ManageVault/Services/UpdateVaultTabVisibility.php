@@ -24,6 +24,7 @@ class UpdateVaultTabVisibility extends BaseService implements ServiceInterface
             'show_companies_tab' => 'required|boolean',
             'show_reports_tab' => 'required|boolean',
             'show_calendar_tab' => 'required|boolean',
+            'show_gifts_tab' => 'sometimes|boolean',
         ];
     }
 
@@ -53,6 +54,9 @@ class UpdateVaultTabVisibility extends BaseService implements ServiceInterface
         $this->vault->show_companies_tab = $data['show_companies_tab'];
         $this->vault->show_reports_tab = $data['show_reports_tab'];
         $this->vault->show_calendar_tab = $data['show_calendar_tab'];
+        if (array_key_exists('show_gifts_tab', $data)) {
+            $this->vault->show_gifts_tab = $data['show_gifts_tab'];
+        }
         $this->vault->save();
 
         return $this->vault;

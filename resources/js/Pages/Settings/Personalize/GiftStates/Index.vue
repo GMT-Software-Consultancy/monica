@@ -59,6 +59,19 @@
             @click="showGiftStateModal" />
         </div>
 
+        <!-- explanation of the given stage -->
+        <p
+          class="mb-6 rounded-lg border border-gray-200 bg-slate-50 p-3 text-sm dark:border-gray-700 dark:bg-slate-900">
+          {{
+            $t(
+              'The last stage in this list means “given”. Gifts at that stage move to the gift history of their recipients.',
+            )
+          }}
+        </p>
+
+        <!-- errors when deleting a gift state -->
+        <errors v-if="destroyErrors" :errors="destroyErrors" />
+
         <!-- modal to create a gift state -->
         <form
           v-if="createGiftStateModalShown"
@@ -212,6 +225,7 @@ export default {
       createGiftStateModalShown: false,
       editGiftStateId: 0,
       localGiftStates: [],
+      destroyErrors: null,
       form: {
         label: '',
         position: '',
@@ -279,6 +293,8 @@ export default {
     },
 
     destroy(giftState) {
+      this.destroyErrors = null;
+
       if (confirm(this.$t('Are you sure? This action cannot be undone.'))) {
         axios
           .delete(giftState.url.destroy)
@@ -289,7 +305,7 @@ export default {
           })
           .catch((error) => {
             this.loadingState = null;
-            this.form.errors = error.response.data;
+            this.destroyErrors = error.response.data;
           });
       }
     },

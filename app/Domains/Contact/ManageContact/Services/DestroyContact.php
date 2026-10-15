@@ -46,8 +46,27 @@ class DestroyContact extends QueuableService implements ServiceInterface
         }
 
         $this->destroyFiles();
+        $this->updateGifts();
 
         $this->contact->delete();
+    }
+
+    /**
+     * A gift stays for its other recipients, and is deleted when the contact
+     * was its only recipient.
+     */
+    private function updateGifts(): void
+    {
+        $gifts = $this->contact->gifts()->withCount('recipients')->get();
+
+        foreach ($gifts as $gift) {
+            if ($gift->recipients_count <= 1) {
+                $gift->recipients()->detach();
+                $gift->delete();
+            } else {
+                $gift->recipients()->detach($this->contact->id);
+            }
+        }
     }
 
     private function destroyFiles(): void
