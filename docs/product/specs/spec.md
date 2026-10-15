@@ -1,194 +1,248 @@
 # Gift tracking
 
 Last updated: 15 October 2026
-Status: Ready
-Tickets: (fill in once created — this project writes tickets to `output/tickets.md`)
+Status: Ticketed
+Tickets: `output/tickets.md`, tickets 1–10 (no tracker IDs, because this project has no ticket tool)
 
 ---
 
 ## Problem statement
 
-People who use Monica forget gift ideas and past gifts because Monica has no place to record gifts for the people in their vault.
+Monica users forget gift ideas and what they gave before, because Monica has no place to record gifts.
 
 ## Why now
 
-The app's own beta page names gift management as one of the two most important features that the old Monica had and this version lacks. Users who move from the old Monica lose a feature they used. The year-end holidays start in about 10 weeks, and gifts give users a reason to open Monica before every birthday and holiday. This supports the strategy goal of bringing users back at the moments when their stored memory is useful.
+Users name gifts as one of the main features missing from Monica. The product admits the gap: the beta page (`resources/js/Pages/Auth/Beta.vue`) says Monica "misses … gift management". Gifts also give users a reason to come back before every birthday and holiday. That supports the strategy's top goal, which is better retention (how many users keep using Monica over time).
 
 ## Users affected
 
-`docs/product/personas.md` does not exist. This spec uses one working persona, taken from the target segment in `docs/product/strategy.md`:
+`docs/product/personas.md` does not exist, so this spec uses the target segment from `docs/product/strategy.md`.
 
-- **Deliberate rememberer** (primary): a person who uses Monica to remember what matters about the people they care about. They record gift ideas when the ideas come to them. They check those ideas before a birthday or holiday. They look back at what they gave before so they do not repeat a gift.
-- **Vault viewer** (secondary): a user who has view-only access to a shared vault. They can see every gift in the vault but cannot add, change or delete gifts.
-- **Account administrator** (edge case): the only user who can rename, reorder, add or delete gift stages and gift occasions in Settings. Their changes affect every vault in the account.
-
-Shared vaults have one known side effect. If two partners share a vault, one partner can see the gift ideas the other partner records for them. This is accepted for this phase.
+- **Deliberate rememberer (primary).** A person who uses Monica to remember what matters about the people they care about. Some struggle to recall personal details. Gifts are a moment where that memory pays off. This user records ideas as they come and checks them before an occasion.
+- **Other users of a shared vault.** A vault (a separate space with its own contacts, shared by one or more users) can have several users. Each of them sees every gift in the vault, including ideas meant for them. The PM accepts this for this version.
+- **Users with viewer permission in a vault.** They can see gifts but cannot add, edit, or delete them. This matches every other item in a vault.
+- **Existing users, on the hosted plan and on self-hosted installs.** They must get the feature without any setup.
 
 ## Background
 
-Today, users keep gift ideas in notes, tasks or a separate app. Notes and tasks have no stage and no occasion. They are also not collected in one list per vault. Users cannot answer "what did I give Anna last year?" without searching through notes.
+Today, users keep gift ideas outside Monica, for example in a phone note, or they lose them. Some users write ideas into a contact's notes. But notes do not show what is still open, and they do not collect ideas across contacts. Nobody can see "what did I give last year" without searching old notes.
 
-Monica already has part of the setup:
+The code already has part of this feature:
 
-- **Gift stages** (in the code: `gift_states`). Each account has an ordered, editable list of stages. The defaults are Idea, Searched, Found, Bought and Offered.
-- **Gift occasions** (in the code: `gift_occasions`). Each account has an ordered, editable list of occasions. The defaults are Birthday, Anniversary, Christmas, Just because and Wedding.
-
-Users can already edit both lists in Settings, but no other part of the app uses them yet.
+- Account settings already let users manage **gift occasions** (default: Birthday, Anniversary, Christmas, Just because, Wedding).
+- Account settings already let users manage **gift states** (default: Idea, Searched, Found, Bought, Offered).
+- A `gifts` table and a `contact_gift` table exist, but no code reads or writes them. The design of these tables cannot support this spec (see Technical notes).
 
 ---
 
 ## Scope
 
+Terms used in this spec:
+
+- **Gift**: one thing the user plans to give, or has given, to one or more contacts.
+- **Recipient**: a contact the gift is for. A gift has one or more recipients.
+- **Gift occasion**: the reason for the gift, chosen from the account's list in Settings → Personalize → Gift occasions.
+- **Gift state**: how far the gift has progressed, chosen from the account's list in Settings → Personalize → Gift states.
+- **Given date**: the date the user gave the gift.
+- **Open gift**: a gift with no given date.
+- **Given gift**: a gift with a given date.
+- **Module**: a block on the contact page, such as Loans or Goals. The account's contact templates control which modules appear and on which page.
+
 ### In scope
 
-- A **Gifts module** on the contact page. A module is a section of the contact page that an account's template places on a template page. The Gifts module works like the Loans and Goals modules.
-  - Shows "Open ideas" first, then "Past gifts". Past gifts are sorted by given date, newest first.
-  - Lets a vault editor add, edit and delete a gift.
-- **Gift fields:**
-  - Name (what the gift is). Required.
-  - Recipients: one or more contacts in the same vault. Required.
-  - Occasion, chosen from the account's gift occasions. Optional.
-  - Stage, chosen from the account's gift stages. New gifts default to the first stage.
-  - Rough price, with a currency from the account's active currencies. Optional.
-  - Link: a URL the user pastes in. Optional.
-  - Note: free text. Optional.
-  - Given date. This field exists only on given gifts (see "The given rule" below).
-- **Several recipients.** A gift can have more than one recipient, for example a wedding present for a couple. The gift appears in the Gifts module of every recipient.
-- **A vault Gifts page.** It appears in the vault's main navigation and lists every open gift in the vault, grouped by occasion.
-  - Groups follow the occasion order from Settings. Gifts with no occasion go in a last group called "No occasion".
-  - Each gift shows its name, recipients, stage and price, and links to each recipient's contact page.
-  - If the vault has no open gifts, the page shows an empty-state message and explains how to add a gift from a contact page.
-- **A vault setting to show or hide the Gifts page.** It sits with the existing tab visibility settings (Tasks, Files, Journal and others). It is on by default.
-- **Contact history entries.** The contact history (in the code: the contact feed, `ContactFeedItem`) gets an entry on each recipient's page when someone adds a gift. It gets another entry when someone marks a gift as given.
-- **Existing accounts.** A data migration adds the Gifts module to existing accounts, so users see it without changing any settings (see Technical notes). Users can remove it from a template in Settings, the same way they manage other modules.
-- **Phone screens.** The Gifts module and the Gifts page work at phone screen widths, like the rest of the app.
-
-#### The given rule
-
-- A gift is **given** when it has a given date. A gift is **open** when it has no given date.
-- The **final stage** is the gift stage with the highest position, which is the last stage in the Settings list. With the default stages, this is "Offered".
-- When a user moves a gift into the final stage, Monica sets the given date to today. The user can change that date to an earlier day, for example to log a gift from last year. The date cannot be in the future.
-- When a user moves a gift out of the final stage, Monica clears the given date. The gift becomes open again.
-- If an administrator later reorders, renames or deletes stages, existing gifts keep their given date. Their given or open status does not change.
-- If an administrator deletes the stage a gift is in, the gift keeps its given date and shows "No stage".
+- A **Gifts module** on the contact page. It lists the contact's gifts in two sections:
+  - "Ideas": open gifts, newest created first.
+  - "Given": given gifts, most recent given date first.
+- Users with editor permission can add, edit, and delete gifts from the Gifts module. A gift has these fields:
+  - name (required)
+  - recipients (required, at least one contact from the same vault)
+  - gift occasion (optional)
+  - gift state (optional)
+  - estimated price (optional), with a currency from the account's active currencies
+  - link (optional, a web address)
+  - note (optional, free text)
+  - given date (optional)
+- When the user adds a gift from a contact's page, the form pre-selects that contact as a recipient. The user can add more recipients.
+- If the user picks the **last** gift state and the given date is empty, the form fills in today's date. The user can change or clear it. "Last" means the highest position in Settings, whatever its name.
+- A gift with several recipients is **one record**. It appears on each recipient's contact page. An edit to the gift shows on every recipient's page.
+- Each gift row in the Gifts module shows the other recipients by name. Example: "Also for: Ben".
+- A vault-level **Gifts page**, reached from a new "Gifts" tab in the vault's main navigation. It:
+  - shows open gifts only
+  - groups them by gift occasion, in the order set in Settings
+  - puts gifts with no gift occasion in a last group called "No occasion"
+  - hides groups with no open gifts
+  - sorts gifts in each group newest created first
+  - shows, for each gift: name, recipients (each name links to the contact page), gift state, and estimated price
+  - is read-only; users edit gifts on a contact page
+- A **Gifts switch** in vault settings → tab visibility, like the switches for Tasks or Journals. It is on by default.
+- **Existing accounts and vaults** get the Gifts module and the Gifts tab without any setup (see AC-5).
 
 ### Out of scope
 
-- Gifts the user receives. This phase covers only gifts the user gives.
-- Gifts that are private to one vault user. Every user who can see the vault can see every gift.
-- Recipients who are not contacts in the vault.
-- Totals, budgets or spending reports.
-- Links to shops, product lookups or affiliate deals. A link is plain text that the user pastes in.
-- Photos on gifts.
-- Links between a gift and a specific important date (for example, Anna's birthday on 3 March).
-- Sorting the vault Gifts page by whose birthday comes next.
-- A dashboard widget, new reminders or notifications about gifts.
-- The public API, importing gifts from the old Monica, and CardDAV/CalDAV sync. vCard has no gift field, so sync has nothing to carry.
+- Gifts the user **receives** from other people.
+- Gifts that only the author can see ("private" gifts). Gifts follow the same visibility rules as everything else in a vault.
+- Reminders or notifications about gifts.
+- Totals, budgets, or spending reports.
+- Photos on a gift.
+- Gifts in the API.
+- Gifts in DAV export (DAV is the protocol Monica uses to sync contacts and calendars with other apps).
+- Gift suggestions from AI.
+- Sorting or filtering the vault Gifts page by upcoming dates, such as the next birthday.
+- Filtering the vault Gifts page by gift occasion. Grouping by gift occasion covers this need for now.
+- Editing gifts from the vault Gifts page.
 - Search results for gifts.
-- History entries for editing or deleting a gift. Only "gift added" and "gift given" create entries.
+- Contact feed entries (the activity list on a contact page) for gift changes.
 
 ### Phasing
 
 - Phase 1: this spec.
-- Phase 2 (not yet specified): sort the Gifts page by the next important date, add a gift reminder or dashboard widget, and possibly support private gifts or received gifts.
+- Phase 2 (not planned yet): sort the vault Gifts page by the next important date, such as a birthday. Private gifts may follow later as a bigger change.
 
 ### Vertical slice check
 
-If this feature shipped alone, a user could record a gift idea on a contact page, follow it until it is given, and see all open ideas for the vault on one page. They cannot do any of that today.
+Alone, this feature lets a user record gift ideas per contact, see all open ideas in one place, and look back at past gifts. They cannot do any of this today.
 
 ---
 
 ## Figma
 
-No designs needed. The Gifts module reuses the layout and add/edit form patterns of the existing Loans module (`ManageLoans`). The vault Gifts page reuses the layout of the existing vault Tasks page (`Vault/ManageTasks`). A developer who needs a new pattern should ask the PM before building it.
+No new designs needed. Reuse the layout of the Loans module for the Gifts module, and the layout of the vault Tasks page for the vault Gifts page. The design pattern for both already exists in the product.
 
 ---
 
 ## Acceptance criteria
 
-**AC-1 — Add a gift for several recipients**
-GIVEN a vault editor is on Anna's contact page, and Anna and Ben are contacts in the same vault
-WHEN the editor adds a gift named "Cookbook" with recipients Anna and Ben, occasion "Wedding" and no stage chosen
-THEN "Cookbook" appears under "Open ideas" in the Gifts module on both Anna's and Ben's contact pages, with the first gift stage ("Idea" by default)
-AND the contact history of both Anna and Ben shows one "gift added" entry for "Cookbook".
+**AC-1**
+GIVEN a user with editor permission in a vault that has the contacts Anna and Ben
+WHEN the user opens Anna's contact page, adds a gift named "Cookbook" with recipients Anna and Ben, and saves
+THEN "Cookbook" appears in the "Ideas" section of the Gifts module on Anna's page and on Ben's page
+AND "Cookbook" appears exactly once on the vault Gifts page.
 
-**AC-2 — Mark a gift as given**
-GIVEN "Cookbook" is an open gift for Anna and Ben
-WHEN a vault editor changes its stage to the final stage ("Offered" by default) and saves without changing the date
-THEN the given date of "Cookbook" is today
-AND "Cookbook" appears under "Past gifts" on both contact pages, above any gift with an earlier given date
-AND "Cookbook" no longer appears on the vault Gifts page
-AND the contact history of both Anna and Ben shows one "gift given" entry for "Cookbook".
+**AC-2**
+GIVEN Anna has an open gift "Cookbook" and a given gift "Scarf" with the given date 10 December 2025
+WHEN the user edits "Cookbook", sets the given date to 15 October 2026, and saves
+THEN Anna's Gifts module shows "Cookbook" in the "Given" section, above "Scarf"
+AND "Cookbook" no longer appears in the "Ideas" section or on the vault Gifts page.
 
-**AC-3 — Vault Gifts page**
-GIVEN a vault with the Gifts page switched on, where the account's occasions are Birthday then Christmas in Settings order, and the vault has one open Christmas gift, one open Birthday gift, one open gift with no occasion and one given gift
-WHEN a vault user opens the Gifts page
-THEN the page shows three groups in this order: "Birthday", "Christmas", "No occasion", each holding its one open gift
-AND the given gift does not appear
-AND when a vault manager switches the Gifts page off in vault settings, the Gifts link disappears from that vault's main navigation.
+**AC-3**
+GIVEN the account's gift occasions are, in order, Birthday, Anniversary, Christmas, Just because, Wedding
+AND the vault has open gifts "Book" (Birthday), "Lamp" (Christmas), and "Mug" (no gift occasion)
+AND the vault has a given gift "Pen" (Birthday)
+WHEN the user opens the vault Gifts page
+THEN the page shows three groups in this order: Birthday with "Book", Christmas with "Lamp", No occasion with "Mug"
+AND the page does not show "Pen"
+AND the page shows no Anniversary, Just because, or Wedding group.
 
-**AC-4 — Existing accounts see Gifts without setup**
-GIVEN an account and vault created before this release, with the default template unchanged
-WHEN the release migrations have run and a vault user opens any contact page in that vault
-THEN the Gifts module appears on the same template page as the Loans module
-AND the Gifts link appears in the vault's main navigation.
+**AC-4 (unhappy path — empty state)**
+GIVEN a vault with no open gifts
+WHEN the user opens the vault Gifts page
+THEN the page shows an empty-state message that explains how to add a gift from a contact page
+AND the page shows no groups.
 
-**AC-5 (unhappy path) — View-only users cannot change gifts**
-GIVEN a user with vault viewer permission opens a contact page with gifts, and the vault Gifts page
-WHEN the page loads
-THEN the user sees every gift, but no add, edit or delete controls
-AND if that user sends a request to create, update or delete a gift directly, Monica refuses it with HTTP 403 (forbidden) and the gift data does not change.
+**AC-5 (existing accounts)**
+After the release's database migrations run on an install with existing accounts:
 
-**AC-6 (unhappy path) — A recipient is deleted**
-GIVEN "Cookbook" is a gift for Anna and Ben
-WHEN a vault editor deletes Anna's contact
-THEN "Cookbook" stays on Ben's contact page with Ben as its only recipient
-AND WHEN the editor then deletes Ben's contact, "Cookbook" is deleted and no longer appears on the vault Gifts page.
+- [ ] Every contact template in every existing account contains the Gifts module.
+- [ ] Every existing vault shows the Gifts tab in its main navigation.
+- [ ] The vault settings tab visibility section has a Gifts switch, and it is on.
+- [ ] When a vault manager turns the Gifts switch off, the Gifts tab no longer appears in that vault's navigation.
+
+**AC-6 (unhappy path — recipient deleted)**
+GIVEN a gift "Wedding present" with recipients Anna and Ben
+AND a gift "Book" with Anna as its only recipient
+WHEN a user deletes the contact Anna
+THEN "Wedding present" still appears on Ben's page and on the vault Gifts page, with Ben as its only recipient
+AND "Book" no longer exists and does not appear on the vault Gifts page.
 
 ---
 
 ## Assumptions
 
-- **The existing `gifts` and `contact_gift` tables are empty everywhere,** including on the hosted plan and on self-hosted instances. No code writes to them, so we can drop and recreate them. *(Riskiest assumption.)*
-- The deliberate rememberer is the right primary persona. We will replace this with a persona from `personas.md` when that file exists.
-- The final stage in the Settings list is a reliable signal that a gift was given. Users who rename the default stages will keep "given" as the last stage.
-- Every account has at least one gift stage, because new accounts get five by default. If an administrator deletes all stages, users cannot mark gifts as given until they add a stage again.
-- Users accept that everyone in a shared vault sees all gift ideas, including ideas meant for them.
-- Success measure (working assumption, not confirmed by the PM): 60 days after release, at least 15% of hosted vaults with any activity in that period have at least one gift. We will measure this with an aggregate count only. We will not read gift content.
+- **The given date decides whether a gift is open or given.** The gift state does not. Users can rename, reorder, or delete gift states, so no single state name can mean "given". The form fills the given date when the user picks the last gift state, so most users never notice this rule. *This is the riskiest assumption.*
+- The default gift states (Idea → Offered) match how users think about the steps of a gift.
+- All recipients of a gift belong to the same vault as the gift. Gifts cannot cross vaults.
+- No user data exists in the current `gifts` and `contact_gift` tables, because no code has ever written to them. Engineering can replace both tables.
+- Users of a shared vault accept that other users see gift ideas, including ideas meant for them.
+- Success measure: 90 days after release, at least 10% of hosted vaults that were active in that period have at least one gift. The PM had no strong view; this target is a starting guess. A count of gifts per vault in the database is enough, so no new tracking of users is needed.
+- Users ask for this feature often enough to justify it, even though the strategy prefers fewer features. The PM did not provide an issue count or churn data.
 
 ---
 
 ## Technical notes
 
-- **Rebuild the tables.** Add a new migration that drops `contact_gift` and `gifts` and creates them again. Follow the shape of `loans` and `contact_loan` (`database/migrations/2022_03_23_005751_create_loans_table.php`):
-  - `gifts`: `vault_id` (cascade on delete), `gift_occasion_id` (nullable, null on delete), `gift_state_id` (nullable, null on delete), `name`, `description` (the note), `url` (nullable), `estimated_price` (nullable integer), `currency_id` (nullable, null on delete), `given_at` (nullable), timestamps.
-  - `contact_gift`: `gift_id` (cascade on delete), `contact_id` (cascade on delete), timestamps.
-  - Drop the unused `type`, `received_at` and `bought_at` columns.
-- **Price.** Store and show the price with `MonetaryNumberHelper`, exactly as the Loans module does for `amount_lent`.
-- **Code location.** Put services, controllers and view helpers in a new `app/Domains/Contact/ManageGifts/` folder. Put the vault page in a new `app/Domains/Vault/ManageGifts/` folder. Every service extends `BaseService`.
-- **Permissions.**
-  - Create, update and delete services declare `author_must_be_vault_editor` and `contact_must_belong_to_vault`.
-  - Every recipient must belong to the same vault. The service rejects the request otherwise.
-  - Read routes use the `vault-viewer` gate. Write routes use the `vault-editor` gate.
-- **Validation.** The create and update services require a name and at least one recipient. A save that has neither returns a validation error, and Monica saves nothing.
-- **Deleting a contact.** Contacts use soft delete (`Contact` uses `SoftDeletes`), so the `contact_gift` cascade does not run. `DestroyContact` (`app/Domains/Contact/ManageContact/Services/DestroyContact.php`) must remove the contact from each of its gifts. It must also delete any gift that has no recipients left.
-- **Contact page module.** Add `Module::TYPE_GIFTS` in `app/Models/Module.php`. Render it in `ContactShowViewHelper`, next to the Loans and Goals cases.
-  - `SetupAccount` creates the module for new accounts and places it after Loans on the "Information" template page.
-  - A data migration does the same for existing accounts. For each template, it adds Gifts to the template page that holds the Loans module. If a template has no Loans module, the migration skips that template.
-- **Vault page setting.** Add a `show_gifts_tab` boolean column to `vaults`, default `true`. Add it to `UpdateVaultTabVisibility`, `TabVisibility.vue` and the vault navigation in `resources/js/Layouts/Layout.vue`.
-- **History entries.** Add `ACTION_GIFT_CREATED` and `ACTION_GIFT_GIVEN` to `ContactFeedItem`. Write one feed item per recipient.
-- **Shared settings.** Gift stages and gift occasions belong to the account, not the vault. Only account administrators can edit them, and the changes apply to every vault in the account.
-- **Privacy review.** This feature stores data only in Monica's own database. It sends no data to any third party, so it passes the strategy's privacy review gate.
-- **Work in progress.** `docs/iterations/current.md` does not exist, so this spec has not been checked against current work.
+**Data model.** Replace the unused tables from `database/migrations/2022_06_09_173049_create_gifts_table.php`. Do not edit the old migration. Add a new migration that drops `contact_gift` and `gifts`, then creates them again:
+
+- `gifts`:
+  - `id`
+  - `vault_id`: foreign key to vaults, deleted with the vault.
+  - `gift_occasion_id`: nullable foreign key. If a user deletes the gift occasion in Settings, the value becomes null.
+  - `gift_state_id`: nullable foreign key. If a user deletes the gift state in Settings, the value becomes null.
+  - `name`: string, required.
+  - `description`: text, nullable. This is the "note" field.
+  - `url`: string, nullable, maximum 2048 characters.
+  - `estimated_price`: integer, nullable.
+  - `currency_id`: nullable foreign key. If the currency is deleted, the value becomes null.
+  - `given_at`: date, nullable.
+  - timestamps.
+- `contact_gift`: `gift_id` and `contact_id`, both foreign keys with cascade delete, plus timestamps.
+- Drop these old columns: `contact_id`, `type`, `received_at`, `bought_at`. Received gifts are out of scope. The gift state replaces `bought_at`.
+
+Why replace the tables: the current `gifts.contact_id` allows only one recipient. The current `contact_gift` table is a wrong copy of the loans pivot: it references `loans` and has `loaner_id` and `loanee_id` columns.
+
+**Follow the Loans module.** `app/Models/Loan.php` and `app/Domains/Contact/ManageLoans/` already link one vault record to many contacts. Build gifts the same way:
+
+- `app/Models/Gift.php`, with `belongsTo` Vault, GiftOccasion, GiftState, Currency, and `belongsToMany` Contact through `contact_gift`.
+- `app/Domains/Contact/ManageGifts/` with `Services/` (CreateGift, UpdateGift, DestroyGift), `Web/Controllers/`, and `Web/ViewHelpers/`.
+- Store and show the estimated price the same way Loans stores `amount_lent`: use `MonetaryNumberHelper` (`parseInput`, `format`, `inputValue`).
+
+**Service rules.** Each service extends `BaseService`:
+
+- Permissions: `author_must_belong_to_account`, `vault_must_belong_to_account`, `author_must_be_vault_editor`.
+- Every recipient ID must be a contact in the same vault. Reject the request otherwise.
+- `name` is required, maximum 255 characters. `recipients` needs at least one contact. If either is missing, the form shows a validation error and the service saves nothing.
+- The gift occasion and gift state must belong to the author's account.
+- `url` must be a valid web address.
+
+**Deleting a contact.** `DestroyContact` (`app/Domains/Contact/ManageContact/Services/DestroyContact.php`) soft-deletes the contact. A soft delete marks the row as deleted but keeps it, so the foreign key cascade does not run. `DestroyContact` must therefore:
+
+1. Remove the contact from every gift in `contact_gift`.
+2. Delete every gift that then has no recipients.
+
+Monica has no feature to restore a deleted contact, so these links never need to come back.
+
+**Moving a contact to another vault.** Gifts must not cross vaults. When a contact moves to another vault:
+
+- If the contact is the only recipient of a gift, the gift moves too (update `vault_id`). Gift occasions and gift states belong to the account, so they stay valid.
+- If the gift has other recipients, remove the moving contact from the gift. The gift stays in the old vault.
+
+**Contact page module.**
+
+- Add `Module::TYPE_GIFTS = 'gifts'` in `app/Models/Module.php`.
+- In `SetupAccount` (`app/Domains/Settings/CreateAccount/Jobs/SetupAccount.php`), create the Gifts module (`can_be_deleted` false). Attach it to the "Information" template page, right after Loans.
+
+**Existing accounts.** Add a data migration that, for each account:
+
+1. Creates the Gifts module.
+2. Attaches it to each of the account's templates, on the template page that already holds the Loans module.
+3. If a template has no page with the Loans module, attaches it to that template's last page by position.
+
+**Vault tab.**
+
+- Add `show_gifts_tab` (boolean, default true) to `vaults`. The default makes it true for every existing vault.
+- Update `app/Models/Vault.php` (fillable and casts), `UpdateVaultTabVisibility`, `VaultSettingsTabVisibilityController`, `VaultSettingsIndexViewHelper`, and `VaultIndexViewHelper`, following `show_tasks_tab`.
+- Add the vault Gifts page under `app/Domains/Vault/ManageGifts/`. Any user who can see the vault can open it (`author_must_be_in_vault`).
+- Recipient names on the Gifts page must leave out soft-deleted contacts.
+
+**Translations.** Add every new user-facing string with `$t()` in Vue and `trans()`/`trans_key()` in PHP, as the rest of the app does.
 
 ---
 
 ## Open questions
 
-- 🟡 What is the right success measure, and do we already have an aggregate count for hosted vaults? Working assumption: the 15% measure above. — PM
-- 🟡 Does any self-hosted instance have rows in the `gifts` table, for example from manual inserts? Working assumption: no. If the migration finds rows, should it stop instead of dropping the table? — PM with maintainers
-- 🟡 Do users understand that the last stage in Settings means "given"? Working assumption: yes, because the default list ends with "Offered". We can add a hint in the Gift stages settings page later. — PM
-- 🟢 Sorting the Gifts page by whose birthday comes next is Phase 2, not this spec. — PM
+- 🟡 Is 10% of active hosted vaults with at least one gift after 90 days the right success target? Working assumption: yes. — PM
+- 🟡 Will users understand that the given date, not the gift state, decides whether a gift is "given"? Working assumption: yes, because the form fills the given date when the user picks the last gift state. Check this with 3–5 users after release. — PM
+- 🟡 Do any self-hosted installs have rows in the current `gifts` table, entered by hand or by a script? Working assumption: no, because no code writes to it. — Engineering
+- 🟢 Can other users of a shared vault see gift ideas meant for them? Yes. The PM decided gifts follow the same visibility rules as everything else in a vault. — PM
 
 ---
 
@@ -196,15 +250,15 @@ AND WHEN the editor then deletes Ben's contact, "Cookbook" is deleted and no lon
 
 **Decisions made:**
 
-- Gifts belong to a vault and link to one or more recipient contacts. Every vault user can see them. Only vault editors can change them.
-- A gift is given when it has a given date. Moving a gift into the final stage sets that date, and moving it out of the final stage clears it.
-- When a gift loses its last recipient, Monica deletes the gift.
-- The vault Gifts page shows only open gifts, grouped by occasion. A vault setting switches it on or off, and it is on by default.
-- Existing accounts get the Gifts module through a data migration. It goes on the same template page as Loans.
-- Photos, received gifts, budgets, reminders, the API and CardDAV/CalDAV sync are not part of this phase.
+- A gift is one record that can have several recipients. All recipients belong to the same vault.
+- The given date decides whether a gift is open or given. The gift state only describes progress.
+- Gift occasions and gift states come from the existing account settings. Users can rename them and add their own.
+- The vault Gifts page shows open gifts only, grouped by gift occasion, and is read-only.
+- Existing accounts get the Gifts module and the Gifts tab through migrations, with no setup by users.
+- Received gifts, private gifts, reminders, budgets, photos, the API, DAV export, and AI suggestions are out of this version.
 
 **Riskiest assumption:**
-The unused `gifts` and `contact_gift` tables are empty on every instance, so the migration can drop them without losing user data.
+Users will see a gift as given only when it has a given date, even though they can rename or reorder gift states.
 
 **Next step:**
-Ready for ticket generation. Write tickets to `output/tickets.md`. No open question blocks the build.
+Ready for ticket generation. Nothing blocks the build.

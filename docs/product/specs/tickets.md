@@ -1,736 +1,658 @@
 # Gift tracking — Tickets
-
 Generated: 15 October 2026
 Spec: output/spec.md
-Tracker: none (this project keeps tickets in this file only)
+Tracker: none (no `ticket_tool` configured — tickets live in this file only)
 Initiative: Gift tracking
+
+> **Initiative note:** The spec has no `Initiative:` field. This run is non-interactive, so these tickets use the spec title, "Gift tracking", as the initiative. The PM should confirm or replace it before anyone posts the tickets to a tracker.
 
 ## Terms used in these tickets
 
-- **Vault viewer, vault editor, vault manager:** the three permission levels a user can have in a vault. A viewer can only look. An editor can also add, change and delete data. A manager can also change vault settings.
-- **Account administrator:** a user who can change account-wide Settings, including gift stages, gift occasions and contact page templates.
-- **Gift stages:** the account's ordered list of steps a gift moves through. The defaults are Idea, Searched, Found, Bought and Offered.
-- **Gift occasions:** the account's ordered list of reasons for a gift. The defaults are Birthday, Anniversary, Christmas, Just because and Wedding.
-- **Final stage:** the last stage in the Gift stages list in Settings. With the default stages, this is "Offered".
-- **Open gift / given gift:** a gift is **given** when it has a given date. A gift is **open** when it has no given date.
-- **Module:** a section of the contact page, such as Loans or Goals. A **template** decides which modules appear on which **template page** (tab) of a contact.
-- **Contact history:** the list of recent activity on a contact page.
+- **Vault**: a separate space with its own contacts. One or more users share it. Each user has one permission level: manager, editor, or viewer.
+- **Gift**: one thing the user plans to give, or has given, to one or more contacts.
+- **Recipient**: a contact the gift is for. A gift has one or more recipients, all in the gift's vault.
+- **Gift occasion**: the reason for the gift. It comes from the account's list in Settings → Personalize → Gift occasions.
+- **Gift state**: how far the gift has progressed. It comes from the account's list in Settings → Personalize → Gift states.
+- **Given date**: the date the user gave the gift.
+- **Open gift**: a gift with no given date. **Given gift**: a gift with a given date. The given date decides this, not the gift state.
+- **Module**: a block on the contact page, such as Loans or Goals. The account's contact templates control which modules appear and on which page.
 
-## Ticket order
+## Breakdown
 
-| #   | Title                                                     | Type    | Depends on |
-| --- | --------------------------------------------------------- | ------- | ---------- |
-| 1   | Prepare gift data storage for the Phase 1 gift fields     | Chore   | None       |
-| 2   | Record a gift idea from a contact page                    | Feature | 1          |
-| 3   | Edit and delete a gift from a contact page                | Feature | 2          |
-| 4   | Mark a gift as given by moving it to the final stage      | Feature | 3          |
-| 5   | Show gift activity in the contact history                 | Feature | 2, 4       |
-| 6   | Keep gifts correct when a recipient contact is deleted    | Feature | 2          |
-| 7   | List all open gifts on a vault Gifts page                 | Feature | 2, 4       |
-| 8   | Let vault managers show or hide the vault Gifts page      | Feature | 7          |
-| 9   | Add the Gifts module to existing accounts automatically   | Feature | 2          |
+| # | Title | Type | Depends on |
+| - | ----- | ---- | ---------- |
+| 1 | Prepare gift storage for gifts with several recipients | Chore | None |
+| 2 | Add gifts from a contact page and list them in a Gifts module | Feature | 1 |
+| 3 | Edit a gift from the Gifts module | Feature | 2 |
+| 4 | Delete a gift from the Gifts module | Feature | 2 |
+| 5 | Fill in the given date when the user picks the last gift state | Feature | 2, 3 |
+| 6 | Give existing accounts the Gifts module on their contact templates | Feature | 2 |
+| 7 | Show open gifts on a vault Gifts page, grouped by gift occasion | Feature | 2 |
+| 8 | Let vault managers hide the Gifts tab | Feature | 7 |
+| 9 | Keep gifts correct when a user deletes a recipient contact | Feature | 2, 7 |
+| 10 | Keep gifts in the right vault when a contact moves to another vault | Feature | 2, 7 |
+
+Tickets 3, 4, 6, 7, 9, and 10 can run in parallel once ticket 2 ships (9 and 10 also need 7).
 
 ---
 
-## 1. Prepare gift data storage for the Phase 1 gift fields
+## 1. Prepare gift storage for gifts with several recipients
 
 **Type:** Chore
 **Initiative:** Gift tracking
 **Depends on:** None
 
 ### Summary
-
-Make Monica able to store every Phase 1 gift field, with one or more recipient contacts per gift.
+Replace the unused gift storage so that one gift belongs to one vault and has one or more recipient contacts.
 
 ### Why now
+Every other gift ticket depends on this work. The current gift storage allows only one recipient per gift. Its link between gifts and contacts is also a faulty copy of the loans design. No code has ever written to this storage, so the team can replace it without moving user data. The spec's Technical notes contain a suggested design; the team makes the final choice.
 
-Every other ticket in this set needs a place to keep gifts. Monica already has gift storage from an earlier, unfinished design. No part of the app writes to it, and it does not match the Phase 1 fields. The spec's riskiest assumption is that this storage is empty on every instance, hosted and self-hosted. This ticket must not lose user data if that assumption is wrong.
+Open question carried from the spec (🟡, owner: Engineering): a self-hosted install may hold gift rows that someone entered by hand or by a script. The working assumption is that none exist. If the team finds a reason to doubt this, raise it before release.
 
 ### Definition of done
-
-- [ ] Monica can store a gift with these fields: name, note, link, rough price with a currency, gift occasion, gift stage and given date.
-- [ ] Monica can link one gift to one or more contacts in the same vault.
-- [ ] Deleting a vault also deletes every gift in that vault.
-- [ ] Deleting a gift occasion, a gift stage or a currency keeps each affected gift. Only that one field on the gift becomes empty.
-- [ ] The fields from the earlier design that Phase 1 does not use (gift type, received date and bought date) no longer exist.
-- [ ] On an instance with no existing gift data, the upgrade finishes with no errors and needs no manual steps.
-- [ ] On an instance that already holds gift data, the upgrade stops before it changes that data. It shows a message that explains why it stopped.
+- [ ] One gift can link to one or more contacts. All of them belong to the gift's vault.
+- [ ] A gift can hold every field in the spec: name, gift occasion, gift state, estimated price with currency, link (up to 2,048 characters), note, and given date.
+- [ ] When a user deletes a vault, Monica also deletes that vault's gifts.
+- [ ] When an account deletes a gift occasion, gift state, or currency in Settings, its gifts remain. That field on those gifts becomes empty.
+- [ ] A fresh install runs the release's migrations without errors on MySQL/MariaDB, PostgreSQL, and SQLite.
+- [ ] An install that already ran earlier releases upgrades without errors and without manual steps, on the same three databases.
 - [ ] Users see no change in the app after this ticket ships.
-- [ ] The existing automated tests pass.
 
 ---
 
-## 2. Record a gift idea from a contact page
+## 2. Add gifts from a contact page and list them in a Gifts module
 
 **Type:** Feature
 **Initiative:** Gift tracking
 **Depends on:** 1
 
 ### Summary
-
-A vault editor can add a gift for one or more contacts from a new Gifts module on the contact page, and every vault user can see it.
+Users with editor permission can add a gift from a contact's page and see that contact's gifts in a new Gifts module.
 
 ### Job to be done
-
-When a gift idea comes to mind for someone, the deliberate rememberer needs to record it on that person's contact page, so they can find it before the next birthday or holiday.
+When a gift idea for someone comes to mind, a deliberate rememberer needs to record it on that person's page, so they can find it before the next birthday or holiday.
 
 ### Navigation context
-
-**Entry point(s):** Vault → Contacts → a contact → the template page that holds the Gifts module. In a new account's default template, this is the "Information" page, where Gifts sits directly after Loans.
-**Exit point(s):** The user stays on the same contact page. The new gift appears under "Open ideas" in the Gifts module.
-**Screen/component:** The Gifts module on the contact page, and its add-gift form.
+**Entry point(s):** Vault → Contacts → a contact's page → Gifts module. In new accounts, the module sits on the "Information" page of the contact template, right after the Loans module.
+**Exit point(s):** After saving, the user stays on the same contact page. The new gift appears in the Gifts module.
+**Screen/component:** The Gifts module on the contact page and its add-gift form.
 
 ### Context
+Monica has no place to record gifts, and users name gifts as one of the main missing features. Gifts give users a reason to return before birthdays and holidays. This supports the retention goal in the product strategy. The gift occasions and gift states that accounts already manage in Settings → Personalize feed this form.
 
-Users who move from the old Monica lose gift tracking, and the app's beta page names it as a top missing feature. Today, users keep gift ideas in notes or another app, with no stage or occasion. This ticket delivers the first useful step: record an idea and see it later. The year-end holidays start in about 10 weeks.
-
-A gift has these fields:
-
-- Name (what the gift is). Required.
-- Recipients: one or more contacts in the same vault. Required. The contact whose page the user is on is a recipient by default.
-- Occasion, from the account's gift occasions. Optional.
-- Stage, from the account's gift stages. New gifts default to the first stage.
-- Rough price, with a currency from the account's active currencies. Optional.
-- Link: a web address the user pastes in. Optional.
-- Note: free text. Optional.
+The Gifts module lists gifts in two sections. "Ideas" holds open gifts. "Given" holds given gifts. One gift with several recipients is one gift: it appears on every recipient's page.
 
 ### Designs
-
-No designs needed. Reuse the layout and the add/edit form pattern of the Loans module on the contact page. Ask the PM before building any new pattern.
+No new designs needed. Reuse the layout of the Loans module.
 
 ### Acceptance criteria
 
-**Scenario: Vault editor adds a gift for two recipients**
-Given a vault editor is on Anna's contact page, and Anna and Ben are contacts in the same vault
-When they add a gift named "Cookbook" with recipients Anna and Ben, occasion "Wedding" and no stage chosen
-Then "Cookbook" appears under "Open ideas" in the Gifts module on Anna's contact page, with the stage "Idea"
-And "Cookbook" also appears under "Open ideas" on Ben's contact page, with the stage "Idea".
+**Scenario: New accounts show the Gifts module after Loans**
+Given a user has just created a new account and a contact named Anna
+When the user opens the "Information" page of Anna's contact page
+Then the Gifts module appears directly after the Loans module
+And the Gifts module shows empty "Ideas" and "Given" sections
 
-**Scenario: Vault editor adds a gift with every optional field**
-Given a vault editor is on Anna's contact page, and the account has Euro as an active currency
-When they add a gift named "Scarf" with occasion "Birthday", stage "Found", price 40 EUR, a link and a note
-Then "Scarf" appears under "Open ideas" with the occasion "Birthday" and the stage "Found"
-And it shows the price in the same format the Loans module uses for amounts
-And it shows the link and the note exactly as the editor entered them.
+**Scenario: The add-gift form offers every gift field**
+Given a user with editor permission is on Anna's contact page
+When the user clicks the button to add a gift in the Gifts module
+Then the form shows these fields: name, recipients, gift occasion, gift state, estimated price with currency, link, note, and given date
+And the recipients field already contains Anna
+And the gift occasion list shows the account's gift occasions in the order set in Settings
+And the gift state list shows the account's gift states in the order set in Settings
+And the currency list shows only the account's active currencies
 
-**Scenario: Saving a gift with no name shows an error**
-Given a vault editor has the add-gift form open on Anna's contact page
-When they save the form with the name field empty
-Then the form shows an error that says a name is required
-And no new gift appears in the Gifts module.
+**Scenario: Add one gift for two recipients**
+Given a user with editor permission is on Anna's contact page
+And the vault also contains the contact Ben
+When the user saves a gift named "Cookbook" with recipients Anna and Ben
+Then "Cookbook" appears in the "Ideas" section of Anna's Gifts module, with the text "Also for: Ben"
+And when the user opens Ben's contact page, "Cookbook" appears once in the "Ideas" section, with the text "Also for: Anna"
 
-**Scenario: Saving a gift with no recipients shows an error**
-Given a vault editor has the add-gift form open on Anna's contact page
-When they remove every recipient and save the form
-Then the form shows an error that says at least one recipient is required
-And no new gift appears in the Gifts module.
+**Scenario: A gift row shows its details**
+Given a user is on Anna's contact page
+And Anna has an open gift "Lamp" with gift occasion Christmas, gift state Found, and an estimated price of 40 EUR
+When the user looks at the Gifts module
+Then the "Lamp" row shows Christmas, Found, and the price formatted as 40 EUR in the user's number format
 
-**Scenario: Vault viewer sees gifts but cannot add them**
-Given a vault viewer is on Anna's contact page, and Anna has the open gift "Cookbook"
-When the page loads
-Then they see "Cookbook" in the Gifts module
-And they see no control to add a gift.
+**Scenario: Ideas and Given sections follow their sort order**
+Given Anna has open gifts "Mug" (created 1 October 2026) and "Book" (created 10 October 2026)
+And Anna has given gifts "Scarf" (given 10 December 2025) and "Pen" (given 1 March 2026)
+When the user opens Anna's contact page
+Then the "Ideas" section lists "Book" above "Mug"
+And the "Given" section lists "Pen" above "Scarf"
 
-**Scenario: Vault viewer cannot add a gift by sending a request directly**
-Given a vault viewer is signed in to the vault that holds Anna's contact
-When they send a request to create a gift for Anna directly, without the page
-Then Monica answers with HTTP 403 (forbidden)
-And no new gift appears in Anna's Gifts module when the page reloads.
+**Scenario: A gift saved with a given date goes straight to Given**
+Given a user with editor permission is on Anna's add-gift form
+When the user saves a gift named "Watch" with the given date 1 September 2026
+Then "Watch" appears in the "Given" section of Anna's Gifts module
+And "Watch" does not appear in the "Ideas" section
 
-**Scenario: Only contacts from the same vault can be recipients**
-Given a vault editor has the add-gift form open on Anna's contact page, and Carla is a contact in a different vault
-When they search the recipient list for "Carla"
-Then Carla is not offered as a recipient.
+**Scenario: Saving without a name shows an error**
+Given a user with editor permission is on Anna's add-gift form
+When the user saves the form with the name field empty
+Then the form shows an error that the name is required
+And no new gift appears in Anna's Gifts module
 
-**Scenario: A request that names a recipient from another vault is refused**
-Given a vault editor is signed in to the vault that holds Anna's contact, and Carla is a contact in a different vault
-When they send a request directly to create a gift with recipients Anna and Carla
-Then Monica refuses the request
-And no new gift appears on Anna's contact page.
+**Scenario: Saving without any recipient shows an error**
+Given a user with editor permission is on Anna's add-gift form
+And the user has removed Anna from the recipients field
+When the user saves the form
+Then the form shows an error that the gift needs at least one recipient
+And no new gift appears in Anna's Gifts module
 
-**Scenario: New accounts get the Gifts module in the default template**
-Given a user has just created a new account and a vault
-When they open the "Information" page of any contact in that vault
-Then the Gifts module appears directly after the Loans module.
+**Scenario: An invalid link shows an error**
+Given a user with editor permission is on Anna's add-gift form
+When the user saves the form with "not a link" in the link field
+Then the form shows an error that the link must be a valid web address
+And no new gift appears in Anna's Gifts module
 
-**Scenario: Account administrator adds the Gifts module to a template**
-Given an account administrator is on a template page in Settings → Templates, and the page does not hold the Gifts module
-When they add the Gifts module to that template page
-Then the Gifts module appears on that page for every contact that uses the template.
+**Scenario: The recipients field offers only contacts from this vault**
+Given the user's account has two vaults, "Family" and "Work"
+And the user is on the add-gift form on a contact page in "Family"
+When the user searches the recipients field for a contact that exists only in "Work"
+Then the recipients field shows no match for that contact
 
-**Scenario: Gifts module works on a phone screen**
-Given a vault editor is on Anna's contact page on a phone-sized screen
-When they add a gift named "Cookbook"
-Then they can complete the add-gift form without scrolling sideways
-And "Cookbook" appears under "Open ideas" without scrolling sideways.
+**Scenario: A viewer sees gifts but cannot add them**
+Given a user with viewer permission is on Anna's contact page
+And Anna has an open gift "Cookbook"
+When the user looks at the Gifts module
+Then the user sees "Cookbook" in the "Ideas" section
+And the user sees no button to add a gift
 
 ### Out of scope
-
-- Editing and deleting a gift (ticket 3).
-- Marking a gift as given and the "Past gifts" list (ticket 4).
-- Contact history entries (ticket 5).
+- Editing a gift (ticket 3) and deleting a gift (ticket 4).
+- Filling in the given date from the last gift state (ticket 5).
+- The Gifts module in accounts that existed before this release (ticket 6).
 - The vault Gifts page (ticket 7).
-- Adding the module to templates in existing accounts automatically (ticket 9).
-- Gifts the user receives, private gifts, recipients who are not vault contacts, photos, budgets and totals.
-- Shop links, product lookups or previews. The link is plain text that the user pastes in.
-- Search results, the public API, import from the old Monica, and CardDAV/CalDAV sync.
+- Gifts the user receives, private gifts, reminders, totals or budgets, photos, the API, DAV export, AI suggestions, search results, and contact feed entries for gifts.
 
 ---
 
-## 3. Edit and delete a gift from a contact page
+## 3. Edit a gift from the Gifts module
 
 **Type:** Feature
 **Initiative:** Gift tracking
 **Depends on:** 2
 
 ### Summary
-
-A vault editor can change any field of a gift, including its recipients, and can delete a gift, from the Gifts module on a contact page.
+Users with editor permission can edit any field of a gift from any recipient's Gifts module.
 
 ### Job to be done
-
-When a gift idea changes or is no longer wanted, the deliberate rememberer needs to update or remove it, so they can trust that their gift list is current.
+When a deliberate rememberer buys or gives a gift, they need to update it in Monica, so they can see what is still open and what they already gave.
 
 ### Navigation context
-
-**Entry point(s):** Vault → Contacts → a contact → the template page that holds the Gifts module → a gift in the module.
-**Exit point(s):** The user stays on the same contact page. The Gifts module shows the updated gift, or no longer shows a deleted gift.
-**Screen/component:** The Gifts module on the contact page, and its edit-gift form.
+**Entry point(s):** Vault → Contacts → a recipient's contact page → Gifts module → the edit action on a gift row.
+**Exit point(s):** After saving, the user stays on the same contact page. The Gifts module shows the updated gift.
+**Screen/component:** The Gifts module on the contact page and its edit-gift form.
 
 ### Context
-
-Gift ideas change. A price changes, a second person joins a shared present, or the user drops an idea. Without edit and delete, the gift list goes out of date and users stop trusting it. Changes apply to the gift itself, so every recipient's contact page shows the same gift.
+Users record ideas first and then progress them: they find, buy, and give the gift. Setting the given date marks a gift as given. Because a gift with several recipients is one gift, an edit on one recipient's page must show on every recipient's page.
 
 ### Designs
-
-No designs needed. Reuse the edit and delete pattern of the Loans module on the contact page.
+No new designs needed. Reuse the edit pattern of the Loans module.
 
 ### Acceptance criteria
 
-**Scenario: Vault editor changes the details of a gift**
-Given a vault editor is on Anna's contact page, and "Cookbook" is an open gift for Anna and Ben
-When they change the price of "Cookbook" to 30 EUR and the occasion to "Christmas", and save
-Then "Cookbook" shows the price 30 EUR and the occasion "Christmas" on Anna's contact page
-And Ben's contact page shows the same new price and occasion.
+**Scenario: An edit shows on every recipient's page**
+Given a user with editor permission is on Anna's contact page
+And the gift "Cookbook" has recipients Anna and Ben
+When the user renames "Cookbook" to "Italian cookbook" and saves
+Then Anna's Gifts module shows "Italian cookbook"
+And when the user opens Ben's contact page, its Gifts module shows "Italian cookbook"
 
-**Scenario: Vault editor adds a recipient to an existing gift**
-Given a vault editor is on Anna's contact page, and "Cookbook" is a gift for Anna only
-When they add Ben as a recipient of "Cookbook" and save
-Then "Cookbook" appears in the Gifts module on Ben's contact page.
+**Scenario: Setting a given date moves the gift to Given**
+Given a user with editor permission is on Anna's contact page
+And Anna has an open gift "Cookbook" and a given gift "Scarf" with the given date 10 December 2025
+When the user edits "Cookbook", sets the given date to 15 October 2026, and saves
+Then Anna's Gifts module shows "Cookbook" in the "Given" section, above "Scarf"
+And "Cookbook" no longer appears in the "Ideas" section
 
-**Scenario: Vault editor removes one recipient from a gift**
-Given a vault editor is on Anna's contact page, and "Cookbook" is a gift for Anna and Ben
-When they remove Ben as a recipient of "Cookbook" and save
-Then "Cookbook" no longer appears on Ben's contact page
-And "Cookbook" still appears on Anna's contact page with Anna as its only recipient.
+**Scenario: Clearing the given date moves the gift back to Ideas**
+Given a user with editor permission is on Anna's contact page
+And Anna has a given gift "Scarf"
+When the user edits "Scarf", clears the given date, and saves
+Then "Scarf" appears in the "Ideas" section
+And "Scarf" no longer appears in the "Given" section
 
-**Scenario: Vault editor deletes a gift**
-Given a vault editor is on Anna's contact page, and "Cookbook" is a gift for Anna and Ben
-When they delete "Cookbook"
-Then "Cookbook" no longer appears on Anna's contact page
-And "Cookbook" no longer appears on Ben's contact page.
-
-**Scenario: Clearing the name shows an error and keeps the old gift**
-Given a vault editor has the edit form for "Cookbook" open on Anna's contact page
-When they clear the name and save
-Then the form shows an error that says a name is required
-And the Gifts module still shows "Cookbook" with its earlier details.
+**Scenario: Removing the name shows an error and keeps the old gift**
+Given a user with editor permission is on the edit form for Anna's gift "Cookbook"
+When the user clears the name and saves
+Then the form shows an error that the name is required
+And Anna's Gifts module still shows "Cookbook" with its earlier values
 
 **Scenario: Removing every recipient shows an error**
-Given a vault editor has the edit form for "Cookbook" open on Anna's contact page
-When they remove every recipient and save
-Then the form shows an error that says at least one recipient is required
-And "Cookbook" still appears with its earlier recipients.
+Given a user with editor permission is on the edit form for Anna's gift "Cookbook"
+When the user removes every recipient and saves
+Then the form shows an error that the gift needs at least one recipient
+And Anna's Gifts module still shows "Cookbook"
 
-**Scenario: Vault viewer sees no edit or delete controls**
-Given a vault viewer is on Anna's contact page, and Anna has the gift "Cookbook"
-When the page loads
-Then they see "Cookbook"
-And they see no control to edit or delete it.
+**Scenario: Removing the current contact as a recipient**
+Given a user with editor permission is on Anna's contact page
+And the gift "Cookbook" has recipients Anna and Ben
+When the user edits "Cookbook", removes Anna from the recipients, and saves
+Then "Cookbook" no longer appears in Anna's Gifts module
+And when the user opens Ben's contact page, "Cookbook" appears there with no "Also for" text
 
-**Scenario: Vault viewer cannot change or delete a gift by sending a request directly**
-Given a vault viewer is signed in to the vault that holds the gift "Cookbook"
-When they send a request directly to update or delete "Cookbook"
-Then Monica answers with HTTP 403 (forbidden)
-And "Cookbook" is unchanged when they reload Anna's contact page.
+**Scenario: A gift whose gift state was deleted in Settings**
+Given Anna has a gift "Lamp" with the gift state "Searched"
+And an account administrator has deleted the gift state "Searched" in Settings → Personalize → Gift states
+When a user opens Anna's contact page
+Then "Lamp" still appears in the Gifts module with no gift state
+And the edit form for "Lamp" shows the gift state field empty
 
-**Scenario: Moving a gift between stages that are not final keeps it open**
-Given a vault editor has the edit form for "Cookbook" open, and "Cookbook" is in the stage "Idea"
-When they change the stage to "Bought" and save
-Then "Cookbook" shows the stage "Bought"
-And it stays under "Open ideas".
+**Scenario: A viewer cannot edit a gift**
+Given a user with viewer permission is on Anna's contact page
+And Anna has an open gift "Cookbook"
+When the user looks at the "Cookbook" row
+Then the user sees no edit action
 
 ### Out of scope
-
-- Moving a gift into or out of the final stage, and the given date (ticket 4).
-- Contact history entries for edits or deletes. The spec rules these out for Phase 1.
-- Undo for a deleted gift.
+- Filling in the given date from the last gift state (ticket 5).
+- Editing gifts from the vault Gifts page.
+- Deleting a gift (ticket 4).
 
 ---
 
-## 4. Mark a gift as given by moving it to the final stage
-
-**Type:** Feature
-**Initiative:** Gift tracking
-**Depends on:** 3
-
-### Summary
-
-A vault editor can mark a gift as given by moving it to the final stage, and the Gifts module then lists it under "Past gifts" with its given date.
-
-### Job to be done
-
-When the deliberate rememberer gives a gift, they need to record that it was given and when, so they can check past gifts later and avoid giving the same thing twice.
-
-### Navigation context
-
-**Entry point(s):** Vault → Contacts → a contact → the template page that holds the Gifts module → the edit form of an open gift.
-**Exit point(s):** The user stays on the same contact page. The gift moves from "Open ideas" to "Past gifts", or back.
-**Screen/component:** The Gifts module on the contact page, its edit-gift form, and the "Past gifts" list.
-
-### Context
-
-Users cannot answer "what did I give Anna last year?" today. The given rule answers it:
-
-- Moving a gift into the final stage sets its given date to today. The editor can change that date to an earlier day, but not to a future day.
-- Moving a gift out of the final stage clears the given date, so the gift is open again.
-- An account administrator can later reorder, rename or delete stages. Existing gifts keep their given date, so their open or given status does not change.
-
-The Gifts module shows "Open ideas" first, then "Past gifts". "Past gifts" lists given gifts by given date, newest first.
-
-### Designs
-
-No designs needed. Reuse the Loans module pattern for the second list and for the date field.
-
-### Acceptance criteria
-
-**Scenario: Vault editor marks a gift as given today**
-Given a vault editor has the edit form open for "Cookbook", an open gift for Anna and Ben
-When they change the stage to "Offered" and save without changing the date
-Then "Cookbook" appears under "Past gifts" on Anna's and Ben's contact pages, with today's date as its given date
-And "Cookbook" no longer appears under "Open ideas" on either page.
-
-**Scenario: Past gifts list the newest given date first**
-Given Anna has the given gift "Scarf" with a given date of 12 March 2026
-When a vault editor marks "Cookbook" for Anna as given today
-Then "Cookbook" appears above "Scarf" under "Past gifts" on Anna's contact page.
-
-**Scenario: Vault editor logs a gift that was given in the past**
-Given a vault editor has the edit form open for "Watch", an open gift for Anna
-When they change the stage to "Offered", set the given date to 24 December 2025, and save
-Then "Watch" appears under "Past gifts" with the given date 24 December 2025.
-
-**Scenario: A given date in the future shows an error**
-Given a vault editor has the edit form open for "Cookbook", with the stage set to "Offered"
-When they set the given date to tomorrow and save
-Then the form shows an error that says the given date cannot be in the future
-And "Cookbook" keeps the stage and date it had before they opened the form.
-
-**Scenario: Moving a gift out of the final stage makes it open again**
-Given "Cookbook" is a given gift for Anna, in the stage "Offered"
-When a vault editor changes its stage to "Bought" and saves
-Then "Cookbook" appears under "Open ideas" on Anna's contact page
-And it no longer shows a given date.
-
-**Scenario: The final stage follows the account's own stage list**
-Given an account administrator has added the stage "Wrapped" at the end of the Gift stages list in Settings
-When a vault editor moves the open gift "Cookbook" to the stage "Wrapped" and saves
-Then "Cookbook" appears under "Past gifts" with today's date as its given date.
-
-**Scenario: Reordering stages does not change a gift's given or open status**
-Given Anna has the given gift "Scarf" in the stage "Offered" and the open gift "Cookbook" in the stage "Bought"
-When an account administrator moves "Bought" to the end of the Gift stages list in Settings
-Then Anna's contact page still shows "Scarf" under "Past gifts" with its given date
-And it still shows "Cookbook" under "Open ideas".
-
-**Scenario: Deleting a gift's stage leaves the gift with "No stage"**
-Given Anna has the given gift "Scarf" in the stage "Offered", with a given date of 12 March 2026
-When an account administrator deletes the stage "Offered" in Settings
-Then Anna's contact page shows "Scarf" under "Past gifts" with the given date 12 March 2026
-And "Scarf" shows "No stage".
-
-**Scenario: An account with no gift stages cannot mark gifts as given**
-Given an account administrator has deleted every gift stage in Settings
-When a vault editor adds the gift "Cookbook" on Anna's contact page
-Then "Cookbook" appears under "Open ideas" and shows "No stage"
-And the edit form offers no stage, so the editor cannot mark the gift as given.
-
-### Out of scope
-
-- The "gift given" contact history entry (ticket 5).
-- Removing given gifts from the vault Gifts page (ticket 7).
-- A hint in the Gift stages settings that the last stage means "given". The spec leaves this for later.
-- Links between a gift and a specific important date, such as Anna's birthday.
-
----
-
-## 5. Show gift activity in the contact history
-
-**Type:** Feature
-**Initiative:** Gift tracking
-**Depends on:** 2, 4
-
-### Summary
-
-Each recipient's contact history shows an entry when someone adds a gift for them and another when someone marks that gift as given.
-
-### Job to be done
-
-When the deliberate rememberer looks back at a contact's recent activity, they need to see gifts that were planned and given, so they can recall the relationship's history in one place.
-
-### Navigation context
-
-**Entry point(s):** Vault → Contacts → a contact → the contact history on the contact page.
-**Exit point(s):** The user stays on the contact page. No navigation happens.
-**Screen/component:** The contact history on the contact page.
-
-### Context
-
-The contact history is where users already see what happened with a person. Gifts belong there because a gift is a moment in the relationship. The spec limits Phase 1 to two kinds of entry: "gift added" and "gift given". Each recipient of a gift gets their own entry.
-
-### Designs
-
-No designs needed. Use the existing contact history entry style.
-
-### Acceptance criteria
-
-**Scenario: Adding a gift creates a "gift added" entry for each recipient**
-Given a vault editor is on Anna's contact page, and Anna and Ben are contacts in the same vault
-When they add the gift "Cookbook" with recipients Anna and Ben
-Then Anna's contact history shows one "gift added" entry for "Cookbook"
-And Ben's contact history shows one "gift added" entry for "Cookbook".
-
-**Scenario: Marking a gift as given creates a "gift given" entry for each recipient**
-Given "Cookbook" is an open gift for Anna and Ben
-When a vault editor moves "Cookbook" to the final stage and saves
-Then Anna's contact history shows one "gift given" entry for "Cookbook"
-And Ben's contact history shows one "gift given" entry for "Cookbook".
-
-**Scenario: A failed save creates no history entry**
-Given a vault editor has the add-gift form open on Anna's contact page
-When they save the form with the name field empty
-Then the form shows an error
-And Anna's contact history shows no new entry.
-
-**Scenario: Editing or deleting a gift creates no history entry**
-Given "Cookbook" is an open gift for Anna
-When a vault editor changes its price and saves, then deletes it
-Then Anna's contact history shows no new entry for either action.
-
-**Scenario: Changing the given date of a given gift creates no new entry**
-Given "Cookbook" is a given gift for Anna, and Anna's contact history has one "gift given" entry for it
-When a vault editor changes the given date to an earlier day and saves
-Then Anna's contact history still shows exactly one "gift given" entry for "Cookbook".
-
-**Scenario: Marking a reopened gift as given again adds a second entry**
-Given "Cookbook" was given, then moved back to the stage "Bought"
-When a vault editor moves "Cookbook" to the final stage again and saves
-Then Anna's contact history shows a second "gift given" entry for "Cookbook".
-
-### Out of scope
-
-- Entries for editing or deleting a gift. The spec rules these out for Phase 1.
-- Gift entries on the vault dashboard, reminders or notifications.
-
----
-
-## 6. Keep gifts correct when a recipient contact is deleted
+## 4. Delete a gift from the Gifts module
 
 **Type:** Feature
 **Initiative:** Gift tracking
 **Depends on:** 2
 
 ### Summary
-
-When a vault editor deletes a contact, Monica removes that contact from each of their gifts and deletes any gift that has no recipients left.
+Users with editor permission can delete a gift from any recipient's Gifts module.
 
 ### Job to be done
-
-When the deliberate rememberer deletes a contact, they need that contact's gifts to stay correct for everyone else, so they can trust the gift lists on other contact pages and on the vault Gifts page.
+When a deliberate rememberer drops a gift idea or added one by mistake, they need to remove it, so their list stays accurate.
 
 ### Navigation context
-
-**Entry point(s):** Vault → Contacts → a contact → the option to delete the contact.
-**Exit point(s):** The user lands where Monica sends them today after a contact is deleted. Other recipients' contact pages show the updated gift.
-**Screen/component:** Contact deletion, and the Gifts module on the remaining recipients' contact pages.
+**Entry point(s):** Vault → Contacts → a recipient's contact page → Gifts module → the delete action on a gift row.
+**Exit point(s):** The user stays on the same contact page. The gift no longer appears in the Gifts module.
+**Screen/component:** The Gifts module on the contact page.
 
 ### Context
-
-A gift can have several recipients, such as a wedding present for a couple. If one recipient is deleted, the gift still matters to the other recipients. A gift with no recipients has no place to appear, so Monica deletes it.
+Without delete, the "Ideas" section fills with ideas the user no longer wants. Deleting a gift removes it for every recipient, because a gift with several recipients is one gift.
 
 ### Designs
+No new designs needed. Reuse the delete pattern of the Loans module, including its confirmation step.
 
+### Acceptance criteria
+
+**Scenario: Deleting a gift removes it for every recipient**
+Given a user with editor permission is on Anna's contact page
+And the gift "Cookbook" has recipients Anna and Ben
+When the user deletes "Cookbook" and confirms
+Then "Cookbook" no longer appears in Anna's Gifts module
+And when the user opens Ben's contact page, "Cookbook" does not appear there
+
+**Scenario: Cancelling the delete keeps the gift**
+Given a user with editor permission is on Anna's contact page
+And Anna has an open gift "Cookbook"
+When the user starts to delete "Cookbook" and cancels the confirmation
+Then "Cookbook" still appears in Anna's Gifts module
+
+**Scenario: A viewer cannot delete a gift**
+Given a user with viewer permission is on Anna's contact page
+And Anna has an open gift "Cookbook"
+When the user looks at the "Cookbook" row
+Then the user sees no delete action
+
+### Out of scope
+- Restoring a deleted gift.
+- Deleting gifts from the vault Gifts page.
+- What happens to gifts when a user deletes a contact (ticket 9).
+
+---
+
+## 5. Fill in the given date when the user picks the last gift state
+
+**Type:** Feature
+**Initiative:** Gift tracking
+**Depends on:** 2, 3
+
+### Summary
+The gift form fills in today's date as the given date when the user picks the account's last gift state and the given date is empty.
+
+### Job to be done
+When a deliberate rememberer marks a gift as offered, they need it to count as given without an extra step, so their "Ideas" list stays accurate.
+
+### Navigation context
+**Entry point(s):** Vault → Contacts → a contact's page → Gifts module → the add-gift form or the edit-gift form.
+**Exit point(s):** The user stays in the form. After saving, the user stays on the contact page.
+**Screen/component:** The add-gift and edit-gift forms in the Gifts module.
+
+### Context
+The given date, not the gift state, decides whether a gift is open or given. Users can rename, reorder, and delete gift states, so no single state name can mean "given". This behaviour keeps the two in step for most users. "Last" means the gift state with the highest position in Settings, whatever its name. The spec names this the riskiest assumption; the PM plans to check it with 3–5 users after release.
+
+### Designs
 No designs needed.
 
 ### Acceptance criteria
 
-**Scenario: Deleting one recipient keeps the gift for the others**
-Given "Cookbook" is a gift for Anna and Ben
-When a vault editor deletes Anna's contact
-Then Ben's contact page still shows "Cookbook"
-And "Cookbook" shows Ben as its only recipient.
+**Scenario: Picking the last gift state fills today's date**
+Given the account's gift states are, in order, Idea, Searched, Found, Bought, Offered
+And a user with editor permission is on the add-gift form on Anna's contact page, with the given date empty
+When the user picks the gift state "Offered"
+Then the given date field shows today's date
 
-**Scenario: Deleting the last recipient deletes the gift**
-Given "Cookbook" is an open gift for Ben only, after Anna's contact was deleted
-When a vault editor deletes Ben's contact
-Then "Cookbook" no longer appears on the vault Gifts page.
+**Scenario: The rule follows position, not name**
+Given an account administrator has reordered the gift states so that "Bought" is last
+And a user with editor permission is on the edit form for an open gift, with the given date empty
+When the user picks the gift state "Bought"
+Then the given date field shows today's date
 
-**Scenario: Vault viewer cannot delete a recipient and the gift stays unchanged**
-Given a vault viewer is signed in to the vault, and "Cookbook" is a gift for Anna and Ben
-When they send a request directly to delete Anna's contact
-Then Monica answers with HTTP 403 (forbidden)
-And "Cookbook" still shows Anna and Ben as recipients on Ben's contact page.
+**Scenario: An existing given date stays unchanged**
+Given a user with editor permission is on the edit form for a gift with the given date 1 March 2026
+When the user picks the last gift state
+Then the given date field still shows 1 March 2026
 
-**Scenario: Deleting a contact leaves other contacts' gifts alone**
-Given "Scarf" is a gift for Ben only, and "Cookbook" is a gift for Anna only
-When a vault editor deletes Anna's contact
-Then Ben's contact page still shows "Scarf" with no change.
+**Scenario: Picking another gift state leaves the date empty**
+Given a user with editor permission is on the add-gift form, with the given date empty
+When the user picks a gift state that is not the last one
+Then the given date field stays empty
+
+**Scenario: The user clears the filled date before saving**
+Given a user with editor permission is on Anna's add-gift form
+And the form has filled today's date after the user picked the last gift state
+When the user clears the given date and saves the gift as "Cookbook"
+Then "Cookbook" appears in the "Ideas" section of Anna's Gifts module, showing the last gift state
 
 ### Out of scope
-
-- Restoring a deleted contact's gifts.
-- A contact history entry for the change to the gift.
+- Clearing the given date when the user later picks a different gift state. The spec does not ask for this.
+- Changing the gift state when the user sets a given date.
 
 ---
 
-## 7. List all open gifts on a vault Gifts page
+## 6. Give existing accounts the Gifts module on their contact templates
 
 **Type:** Feature
 **Initiative:** Gift tracking
-**Depends on:** 2, 4
+**Depends on:** 2
 
 ### Summary
-
-Every vault user can open a Gifts page from the vault's main navigation and see every open gift in the vault, grouped by occasion.
+Accounts that existed before this release get the Gifts module on every contact template, with no setup by users.
 
 ### Job to be done
-
-When a birthday or holiday is coming, the deliberate rememberer needs to see every open gift idea for the vault in one place, so they can decide what to buy without opening each contact.
+When an existing hosted or self-hosted user upgrades, a deliberate rememberer needs the Gifts module to be already on their contact pages, so they can start recording gifts without changing settings.
 
 ### Navigation context
-
-**Entry point(s):** The "Gifts" link in the vault's main navigation, next to links such as Tasks, Files and Journal.
-**Exit point(s):** The user stays on the Gifts page, or follows a recipient's name to that recipient's contact page.
-**Screen/component:** The vault Gifts page.
+**Entry point(s):** Vault → Contacts → a contact's page, in an account created before this release. Also Settings → Templates, where administrators manage contact templates.
+**Exit point(s):** The user stays on the contact page or template page and sees the Gifts module there.
+**Screen/component:** Contact pages and the template editor in Settings.
 
 ### Context
-
-Ideas recorded on contact pages are only useful if the user can find them before an occasion. One list per vault answers "what am I still planning to give?". This gives users a reason to open Monica before every birthday and holiday, which supports the strategy goal of bringing users back when their stored memory is useful. Given gifts stay on contact pages only.
+Ticket 2 adds the Gifts module only to new accounts. Most hosted users have existing accounts, and they must get the feature without setup. Existing accounts may have changed their templates, so the module goes next to Loans where possible.
 
 ### Designs
-
-No designs needed. Reuse the layout of the vault Tasks page. Ask the PM before building any new pattern.
+No designs needed.
 
 ### Acceptance criteria
 
-**Scenario: Open gifts are grouped by occasion in Settings order**
-Given the account's gift occasions are Birthday then Christmas in Settings order
-And the vault has one open Christmas gift, one open Birthday gift and one open gift with no occasion
-When a vault user opens the Gifts page from the vault's main navigation
-Then the page shows three groups in this order: "Birthday", "Christmas", "No occasion"
-And each group holds its one open gift.
+**Scenario: The module appears on the template page that holds Loans**
+Given an account created before this release has a contact template with the Loans module on its "Information" page
+When a user opens a contact page that uses that template, after the upgrade
+Then the Gifts module appears on the "Information" page, on the same page as the Loans module
 
-**Scenario: Each gift shows its details and links to its recipients**
-Given the vault has the open gift "Cookbook" for Anna and Ben, in the stage "Found", with a price of 30 EUR
-When a vault user opens the Gifts page
-Then "Cookbook" appears once, with its name, both recipients, the stage "Found" and the price 30 EUR
-And each recipient's name links to that recipient's contact page.
+**Scenario: Every template in the account gets the module**
+Given an account created before this release has three contact templates
+When an account administrator opens each template in Settings → Templates, after the upgrade
+Then each template shows the Gifts module on one of its pages
 
-**Scenario: Given gifts do not appear**
-Given the vault has the open gift "Cookbook" and the given gift "Scarf"
-When a vault user opens the Gifts page
-Then the page shows "Cookbook"
-And the page does not show "Scarf".
+**Scenario: A template without Loans gets the module on its last page**
+Given an account created before this release has a contact template with no Loans module on any page
+When an account administrator opens that template in Settings → Templates, after the upgrade
+Then the Gifts module appears on the template's last page, by position
 
-**Scenario: A gift disappears from the page once it is given**
-Given "Cookbook" appears on the vault Gifts page
-When a vault editor moves "Cookbook" to the final stage on Anna's contact page and saves
-Then "Cookbook" no longer appears on the vault Gifts page.
-
-**Scenario: A vault with no open gifts shows an empty state**
-Given the vault has no open gifts
-When a vault user opens the Gifts page
-Then the page shows an empty-state message
-And the message explains how to add a gift from a contact page.
-
-**Scenario: A user without access to the vault cannot open its Gifts page**
-Given a signed-in user has no access to Anna's vault
-When they open the address of that vault's Gifts page
-Then Monica refuses access
-And the user sees none of that vault's gifts.
-
-**Scenario: Vault viewer sees every open gift**
-Given a vault viewer is in a vault with three open gifts
-When they open the Gifts page
-Then they see all three open gifts
-And they see no control to add, edit or delete a gift.
-
-**Scenario: A gift whose occasion was deleted moves to "No occasion"**
-Given the vault has the open gift "Cookbook" with the occasion "Wedding"
-When an account administrator deletes the occasion "Wedding" in Settings
-Then the Gifts page shows "Cookbook" in the "No occasion" group.
-
-**Scenario: Groups follow a new occasion order**
-Given the vault has open gifts for "Birthday" and "Christmas", in that Settings order
-When an account administrator moves "Christmas" above "Birthday" in Settings
-Then the Gifts page shows the "Christmas" group before the "Birthday" group.
-
-**Scenario: Gifts page works on a phone screen**
-Given a vault user is on a phone-sized screen
-When they open the Gifts page
-Then they can read every group and every gift without scrolling sideways.
+**Scenario: A template with no pages does not block the upgrade**
+Given an account created before this release has a contact template with no pages
+When the account administrator opens Settings → Templates, after the upgrade
+Then the template still shows no pages and no error
+And the administrator can add the Gifts module to that template once it has a page
 
 ### Out of scope
-
-- The vault setting that shows or hides the Gifts page (ticket 8).
-- Sorting by whose birthday comes next, and links to specific important dates. These are Phase 2.
-- Adding, editing or deleting gifts from this page.
-- Totals, budgets, a dashboard widget, reminders and notifications.
+- Moving the Gifts module for accounts that later rearrange their templates.
+- The Gifts tab in existing vaults (ticket 7 covers it).
 
 ---
 
-## 8. Let vault managers show or hide the vault Gifts page
+## 7. Show open gifts on a vault Gifts page, grouped by gift occasion
+
+**Type:** Feature
+**Initiative:** Gift tracking
+**Depends on:** 2
+
+### Summary
+Every vault gets a Gifts tab that opens a read-only page of all open gifts, grouped by gift occasion.
+
+### Job to be done
+When a holiday or birthday season comes, a deliberate rememberer needs to see every open gift idea in one place, so they can plan without opening each contact.
+
+### Navigation context
+**Entry point(s):** The vault's main navigation → "Gifts" tab. This works in every vault, new and existing.
+**Exit point(s):** Clicking a recipient's name opens that contact's page. The user edits gifts there.
+**Screen/component:** The vault Gifts page.
+
+### Context
+Gift ideas are spread across contacts. A single list lets users plan before an occasion and look across contacts. The page is read-only to keep this version small. Any user who can see the vault can open it, including viewers.
+
+### Designs
+No new designs needed. Reuse the layout of the vault Tasks page.
+
+### Acceptance criteria
+
+**Scenario: Open gifts appear grouped by gift occasion**
+Given the account's gift occasions are, in order, Birthday, Anniversary, Christmas, Just because, Wedding
+And the vault has open gifts "Book" (Birthday), "Lamp" (Christmas), and "Mug" (no gift occasion)
+And the vault has a given gift "Pen" (Birthday)
+When the user opens the vault Gifts page
+Then the page shows three groups in this order: Birthday with "Book", Christmas with "Lamp", No occasion with "Mug"
+And the page does not show "Pen"
+And the page shows no Anniversary, Just because, or Wedding group
+
+**Scenario: Each gift row shows its details and links to recipients**
+Given the vault has an open gift "Cookbook" for Anna and Ben, with gift state Found and an estimated price of 30 EUR
+When the user opens the vault Gifts page
+Then "Cookbook" appears exactly once
+And its row shows the name, the recipients Anna and Ben, the gift state Found, and the price 30 EUR
+And each recipient name links to that contact's page
+
+**Scenario: Gifts in a group are newest first**
+Given the vault has two open Birthday gifts: "Mug" (created 1 October 2026) and "Book" (created 10 October 2026)
+When the user opens the vault Gifts page
+Then the Birthday group lists "Book" above "Mug"
+
+**Scenario: A given gift leaves the page**
+Given the vault has an open gift "Cookbook"
+And a user has set the given date of "Cookbook" on Anna's contact page
+When the user opens the vault Gifts page
+Then "Cookbook" does not appear
+
+**Scenario: Empty state when there are no open gifts**
+Given a vault with no open gifts
+When the user opens the vault Gifts page
+Then the page shows a message that explains how to add a gift from a contact page
+And the page shows no groups
+
+**Scenario: A gift whose gift occasion was deleted moves to No occasion**
+Given the vault has an open gift "Lamp" with the gift occasion Christmas
+And an account administrator has deleted Christmas in Settings → Personalize → Gift occasions
+When the user opens the vault Gifts page
+Then "Lamp" appears in the "No occasion" group
+
+**Scenario: The page is read-only**
+Given a user with editor permission is on the vault Gifts page
+When the user looks at any gift row
+Then the user sees no add, edit, or delete action
+
+**Scenario: A viewer can open the page**
+Given a user with viewer permission is in a vault with open gifts
+When the user clicks the "Gifts" tab in the vault's main navigation
+Then the vault Gifts page opens and shows the open gifts
+
+**Scenario: Existing vaults show the tab after the upgrade**
+Given a vault created before this release
+When a user opens that vault after the upgrade
+Then the vault's main navigation shows the "Gifts" tab
+
+### Out of scope
+- Editing, adding, or deleting gifts from this page.
+- Sorting by upcoming dates, such as the next birthday (Phase 2).
+- Filtering by gift occasion.
+- Showing given gifts on this page.
+- Hiding the tab (ticket 8).
+
+---
+
+## 8. Let vault managers hide the Gifts tab
 
 **Type:** Feature
 **Initiative:** Gift tracking
 **Depends on:** 7
 
 ### Summary
-
-A vault manager can switch the vault Gifts page on or off in the vault's tab visibility settings, and it is on by default.
+Vault managers can turn the Gifts tab on or off in vault settings, like the Tasks and Journals tabs.
 
 ### Job to be done
-
-When a vault does not use gifts, the vault manager needs to hide the Gifts page, so they can keep the vault's navigation short.
+When a vault does not use gifts, a vault manager needs to hide the Gifts tab, so the vault's navigation shows only what its users need.
 
 ### Navigation context
-
-**Entry point(s):** Vault → Vault settings → the tab visibility settings, next to the settings for Tasks, Files, Journal and the other vault pages.
-**Exit point(s):** The user stays in vault settings. The vault's main navigation shows or hides the "Gifts" link.
-**Screen/component:** The tab visibility settings in vault settings, and the vault's main navigation.
+**Entry point(s):** Vault → vault settings → tab visibility section.
+**Exit point(s):** The user stays on vault settings. The vault's main navigation reflects the change.
+**Screen/component:** The tab visibility section of vault settings.
 
 ### Context
-
-Monica already lets vault managers hide vault pages they do not use, such as Tasks or Files. The Gifts page should behave the same way. The page is on by default, so existing and new vaults show it with no setup. The setting affects only the vault Gifts page, not the Gifts module on contact pages.
+Vault managers can already hide other tabs, such as Tasks and Journals. The Gifts tab must work the same way. The switch is on by default, including in vaults that existed before this release.
 
 ### Designs
-
-No designs needed. Add the setting to the existing tab visibility settings, in the same style as the others.
+No new designs needed. Reuse the existing tab visibility switches.
 
 ### Acceptance criteria
 
-**Scenario: Vault manager hides the Gifts page**
-Given a vault manager is on the tab visibility settings, and the Gifts page is switched on
-When they switch the Gifts page off
-Then the "Gifts" link no longer appears in that vault's main navigation.
+**Scenario: The Gifts switch exists and is on in existing vaults**
+Given a vault manager is in a vault created before this release
+When the manager opens the tab visibility section of vault settings
+Then the section shows a Gifts switch
+And the Gifts switch is on
 
-**Scenario: Vault manager shows the Gifts page again**
-Given a vault manager is on the tab visibility settings, and the Gifts page is switched off
-When they switch the Gifts page on
-Then the "Gifts" link appears in that vault's main navigation.
+**Scenario: Turning the switch off hides the tab**
+Given a vault manager is on the tab visibility section of vault settings
+When the manager turns the Gifts switch off
+Then the vault's main navigation no longer shows the "Gifts" tab
 
-**Scenario: A vault editor cannot change the setting by sending a request directly**
-Given a vault editor who is not a vault manager is signed in to the vault
-When they send a request directly to switch the Gifts page off
-Then Monica answers with HTTP 403 (forbidden)
-And the "Gifts" link still appears in the vault's main navigation.
+**Scenario: Turning the switch back on shows the tab**
+Given a vault manager is on the tab visibility section of vault settings, with the Gifts switch off
+When the manager turns the Gifts switch on
+Then the vault's main navigation shows the "Gifts" tab again
 
-**Scenario: New and existing vaults show the Gifts page by default**
-Given a vault that existed before this release, and a vault created after it
-When a vault user opens either vault
-Then the "Gifts" link appears in that vault's main navigation.
+**Scenario: Hiding the tab leaves gifts on contact pages**
+Given a vault manager has turned the Gifts switch off
+When a user opens Anna's contact page in that vault
+Then the Gifts module still shows Anna's gifts
 
-**Scenario: Hiding the Gifts page leaves the Gifts module on contact pages**
-Given a vault manager has switched the Gifts page off, and Anna has the gift "Cookbook"
-When a vault user opens Anna's contact page
-Then the Gifts module still shows "Cookbook".
-
-**Scenario: The setting applies to one vault only**
-Given an account has two vaults, and a vault manager has switched the Gifts page off in the first vault
-When a vault user opens the second vault
-Then the "Gifts" link still appears in the second vault's main navigation.
+**Scenario: Only managers can change the switch**
+Given a user with editor permission is in the vault
+When the user tries to open vault settings
+Then Monica does not let the user change the Gifts switch, as for the other tab switches
 
 ### Out of scope
-
-- Blocking direct visits to the Gifts page address while the page is hidden. The setting behaves like the other tab visibility settings.
-- Hiding the Gifts module on contact pages. Account administrators control that through templates in Settings.
+- Hiding the Gifts module on contact pages. Account administrators control modules through contact templates.
+- Blocking access to the vault Gifts page by its web address when the tab is hidden.
 
 ---
 
-## 9. Add the Gifts module to existing accounts automatically
+## 9. Keep gifts correct when a user deletes a recipient contact
 
 **Type:** Feature
 **Initiative:** Gift tracking
-**Depends on:** 2
+**Depends on:** 2, 7
 
 ### Summary
-
-When an existing instance upgrades to this release, Monica adds the Gifts module to each template, on the same template page as the Loans module.
+When a user deletes a contact, gifts shared with other recipients stay for them, and gifts with no recipients left disappear.
 
 ### Job to be done
-
-When the deliberate rememberer opens Monica after the release, they need to find gifts on their contacts without changing any settings, so they can start using the feature straight away.
+When a deliberate rememberer deletes a contact, they need shared gift ideas to remain for the other people, so they do not lose plans for those people.
 
 ### Navigation context
-
-**Entry point(s):** Vault → Contacts → any contact → the template page that holds the Loans module.
-**Exit point(s):** No navigation happens. The Gifts module is visible on that template page.
-**Screen/component:** The Gifts module on the contact page, and the template settings in Settings → Templates.
+**Entry point(s):** Vault → Contacts → a contact's page → delete contact.
+**Exit point(s):** After deleting, the user returns to the vault's contact list, as today. The effect shows on the other recipients' contact pages and the vault Gifts page.
+**Screen/component:** The contact delete flow, the Gifts module on other recipients' pages, and the vault Gifts page.
 
 ### Context
-
-New accounts get the Gifts module from ticket 2. Accounts created before this release would not see it unless an account administrator added it by hand. Most users never change template settings, so without this ticket most existing users would never find gifts. Account administrators can still remove the module from a template in Settings, like any other module.
+A gift can have several recipients. Deleting one recipient must not delete a gift that still has others. A gift with no recipients left has no meaning, so it must go. Monica cannot restore deleted contacts, so these links never need to come back.
 
 ### Designs
-
 No designs needed.
 
 ### Acceptance criteria
 
-**Scenario: An unchanged default template gets the Gifts module next to Loans**
-Given an account and vault created before this release, with the default template unchanged
-When the upgrade has run and a vault user opens any contact page in that vault
-Then the Gifts module appears on the same template page as the Loans module.
+**Scenario: A shared gift stays for the other recipient**
+Given the vault has an open gift "Wedding present" with recipients Anna and Ben
+When a user with editor permission deletes the contact Anna
+Then Ben's contact page shows "Wedding present" with no "Also for" text
+And the vault Gifts page shows "Wedding present" with Ben as its only recipient
 
-**Scenario: A custom template gets the module where it holds Loans**
-Given an account administrator had moved the Loans module to the "Life" template page before this release
-When the upgrade has run and a vault user opens a contact that uses that template
-Then the Gifts module appears on the "Life" page.
+**Scenario: A gift with no recipients left disappears**
+Given the vault has an open gift "Book" with Anna as its only recipient
+When a user with editor permission deletes the contact Anna
+Then the vault Gifts page does not show "Book"
 
-**Scenario: A template without the Loans module gets no Gifts module**
-Given an account administrator had removed the Loans module from a template before this release
-When the upgrade has run and a vault user opens a contact that uses that template
-Then the Gifts module does not appear on any page of that contact
-And an account administrator can add the Gifts module to that template in Settings → Templates.
-
-**Scenario: The Gifts module appears only once per template**
-Given the upgrade has already run on an instance
-When the upgrade runs a second time, for example after a failed deployment
-Then each contact page still shows the Gifts module only once.
-
-**Scenario: Account administrator removes the module after the upgrade**
-Given the upgrade has added the Gifts module to a template
-When an account administrator removes the Gifts module from that template in Settings → Templates
-Then contacts that use that template no longer show the Gifts module.
+**Scenario: The deleted contact's name never appears on gifts**
+Given the vault has open gifts shared between Anna and other contacts
+When a user deletes the contact Anna and then opens the vault Gifts page
+Then no gift on the page lists Anna as a recipient
 
 ### Out of scope
-
-- The "Gifts" link in the vault's main navigation for existing vaults (ticket 8).
-- Importing gifts from the old Monica.
-- Changing the position of other modules in existing templates.
+- Restoring a deleted contact or its gifts.
+- Warning the user about gifts before deleting a contact.
 
 ---
 
-## Decomposition notes
+## 10. Keep gifts in the right vault when a contact moves to another vault
 
-These calls were made without PM input, because this run was non-interactive. Review them before planning.
+**Type:** Feature
+**Initiative:** Gift tracking
+**Depends on:** 2, 7
 
-- **Initiative.** The spec has no `Initiative:` field. These tickets use "Gift tracking", the spec's title. Add the field to the spec, or rename it here.
-- **Personas.** `docs/product/personas.md` does not exist. The job statements use the spec's working persona, the deliberate rememberer.
-- **Existing gift data (ticket 1).** The spec leaves one question open: should the upgrade stop if it finds existing gift data? Ticket 1 chooses to stop, because that is the only choice that cannot lose user data. The PM and the maintainers should confirm this before ticket 1 starts.
-- **Ticket 9 is a Feature, not a Chore.** It changes the data in existing accounts, but users see the result: the Gifts module appears on their contact pages.
-- **Ticket 5, repeated "gift given" entries.** The spec says Monica adds an entry when someone marks a gift as given. Ticket 5 reads this as "every time", so a gift that is reopened and given again gets a second entry.
-- **Ticket 2, default recipient.** The add-gift form names the current contact as a recipient by default. The spec implies this but does not say it.
-- **Success measure.** The spec's success measure (15% of active hosted vaults with at least one gift, 60 days after release) is a working assumption. No ticket builds the count. Add a ticket if the hosted plan cannot already produce it.
-- **Open questions.** The spec's three 🟡 questions all have working assumptions, and the spec states that none blocks the build. The question about existing gift data affects ticket 1, as noted above.
-- **Work in progress.** `docs/iterations/current.md` does not exist, so these tickets were not checked against current work.
+### Summary
+When a user moves a contact to another vault, gifts follow the rule that a gift and all its recipients stay in one vault.
+
+### Job to be done
+When a deliberate rememberer moves a contact to another vault, they need that person's own gift ideas to come along, so they still find them in the new vault.
+
+### Navigation context
+**Entry point(s):** Vault → Contacts → a contact's page → move the contact to another vault.
+**Exit point(s):** After the move, the user sees the contact in the destination vault, as today. The effect shows on contact pages and vault Gifts pages in both vaults.
+**Screen/component:** The contact move flow, the Gifts module, and the vault Gifts page in both vaults.
+
+### Context
+Gifts must never cross vaults, because each vault can have different users. A gift for only the moving contact belongs with that contact. A gift shared with others stays where the others are. Gift occasions and gift states belong to the account, so they stay valid after a move.
+
+### Designs
+No designs needed.
+
+### Acceptance criteria
+
+**Scenario: A gift for only the moving contact moves with them**
+Given the vault "Family" has an open gift "Book" with Anna as its only recipient, and gift occasion Birthday
+When a user moves Anna to the vault "Work"
+Then Anna's contact page in "Work" shows "Book" in the "Ideas" section, still with gift occasion Birthday
+And the "Work" vault Gifts page shows "Book" in the Birthday group
+And the "Family" vault Gifts page does not show "Book"
+
+**Scenario: A shared gift stays in the old vault without the moving contact**
+Given the vault "Family" has an open gift "Wedding present" with recipients Anna and Ben
+When a user moves Anna to the vault "Work"
+Then Ben's contact page in "Family" shows "Wedding present" with no "Also for" text
+And Anna's contact page in "Work" does not show "Wedding present"
+And the "Work" vault Gifts page does not show "Wedding present"
+
+**Scenario: Given gifts move with the contact too**
+Given the vault "Family" has a given gift "Scarf" with Anna as its only recipient
+When a user moves Anna to the vault "Work"
+Then Anna's contact page in "Work" shows "Scarf" in the "Given" section
+
+### Out of scope
+- Copying shared gifts into the destination vault.
+- Asking the user what to do with gifts during the move.
