@@ -70,6 +70,35 @@ class UpdateVaultTabVisibilityTest extends TestCase
         $this->executeService($ross, $ross->account, $vault);
     }
 
+    /** @test */
+    public function it_hides_and_shows_the_gifts_tab(): void
+    {
+        $ross = $this->createUser();
+        $vault = $this->createVault($ross->account);
+        $vault = $this->setPermissionInVault($ross, Vault::PERMISSION_MANAGE, $vault);
+
+        $request = [
+            'account_id' => $ross->account->id,
+            'author_id' => $ross->id,
+            'vault_id' => $vault->id,
+            'show_group_tab' => true,
+            'show_tasks_tab' => true,
+            'show_files_tab' => true,
+            'show_journal_tab' => true,
+            'show_companies_tab' => true,
+            'show_reports_tab' => true,
+            'show_calendar_tab' => true,
+            'show_gifts_tab' => false,
+        ];
+
+        $vault = (new UpdateVaultTabVisibility)->execute($request);
+        $this->assertFalse($vault->refresh()->show_gifts_tab);
+
+        $request['show_gifts_tab'] = true;
+        $vault = (new UpdateVaultTabVisibility)->execute($request);
+        $this->assertTrue($vault->refresh()->show_gifts_tab);
+    }
+
     private function executeService(User $author, Account $account, Vault $vault): void
     {
         $request = [
@@ -83,6 +112,7 @@ class UpdateVaultTabVisibilityTest extends TestCase
             'show_companies_tab' => true,
             'show_reports_tab' => true,
             'show_calendar_tab' => true,
+            'show_gifts_tab' => true,
         ];
 
         $vault = (new UpdateVaultTabVisibility)->execute($request);
@@ -97,6 +127,7 @@ class UpdateVaultTabVisibilityTest extends TestCase
             'show_companies_tab' => true,
             'show_reports_tab' => true,
             'show_calendar_tab' => true,
+            'show_gifts_tab' => true,
         ]);
     }
 }

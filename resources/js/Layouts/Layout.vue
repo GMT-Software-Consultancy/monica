@@ -246,6 +246,13 @@ const toggleStyle = () => {
                   selected: $page.component.startsWith('Vault/Dashboard/Task'),
                 }
               : null,
+            layoutData.vault.visibility.show_gifts_tab
+              ? {
+                  url: layoutData.vault.url.gifts,
+                  title: $t('Gifts'),
+                  selected: $page.component.startsWith('Vault/Gifts'),
+                }
+              : null,
             layoutData.vault.visibility.show_reports_tab
               ? {
                   url: layoutData.vault.url.reports,

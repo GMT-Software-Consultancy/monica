@@ -38,6 +38,8 @@ class Module extends Model
 
     public const TYPE_LOANS = 'loans';
 
+    public const TYPE_GIFTS = 'gifts';
+
     public const TYPE_RELATIONSHIPS = 'relationships';
 
     public const TYPE_TASKS = 'tasks';

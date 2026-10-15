@@ -3,6 +3,7 @@
 namespace App\Domains\Settings\ManageGiftOccasions\Services;
 
 use App\Interfaces\ServiceInterface;
+use App\Models\Gift;
 use App\Models\GiftOccasion;
 use App\Services\BaseService;
 
@@ -42,6 +43,9 @@ class DestroyGiftOccasion extends BaseService implements ServiceInterface
 
         $this->giftOccasion = $this->account()->giftOccasions()
             ->findOrFail($data['gift_occasion_id']);
+
+        // gifts are never deleted with it: they only lose this value
+        Gift::where('gift_occasion_id', $this->giftOccasion->id)->update(['gift_occasion_id' => null]);
 
         $this->giftOccasion->delete();
 

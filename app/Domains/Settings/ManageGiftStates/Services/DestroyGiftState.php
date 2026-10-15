@@ -3,6 +3,7 @@
 namespace App\Domains\Settings\ManageGiftStates\Services;
 
 use App\Interfaces\ServiceInterface;
+use App\Models\Gift;
 use App\Models\GiftState;
 use App\Services\BaseService;
 
@@ -42,6 +43,9 @@ class DestroyGiftState extends BaseService implements ServiceInterface
 
         $this->giftState = $this->account()->giftStates()
             ->findOrFail($data['gift_state_id']);
+
+        // gifts are never deleted with it: they only lose this value
+        Gift::where('gift_state_id', $this->giftState->id)->update(['gift_state_id' => null]);
 
         $this->giftState->delete();
 

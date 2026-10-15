@@ -47,7 +47,27 @@ class DestroyContact extends QueuableService implements ServiceInterface
 
         $this->destroyFiles();
 
+        $gifts = $this->contact->gifts()->get();
+
         $this->contact->delete();
+
+        $this->destroyGiftsWithoutRecipients($gifts);
+    }
+
+    /**
+     * A gift stays with its other recipients when one recipient is deleted.
+     * A gift whose last recipient is deleted is deleted with that contact.
+     *
+     * @param  \Illuminate\Database\Eloquent\Collection<int, \App\Models\Gift>  $gifts
+     */
+    private function destroyGiftsWithoutRecipients($gifts): void
+    {
+        foreach ($gifts as $gift) {
+            if (! $gift->recipients()->exists()) {
+                $gift->recipients()->detach();
+                $gift->delete();
+            }
+        }
     }
 
     private function destroyFiles(): void

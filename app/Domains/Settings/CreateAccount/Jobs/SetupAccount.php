@@ -533,6 +533,22 @@ class SetupAccount extends QueuableService implements ServiceInterface
             'module_id' => $module->id,
         ]);
 
+        // Gifts
+        $module = (new CreateModule)->execute([
+            'account_id' => $this->author->account_id,
+            'author_id' => $this->author->id,
+            'name_translation_key' => trans_key('Gifts'),
+            'type' => Module::TYPE_GIFTS,
+            'can_be_deleted' => false,
+        ]);
+        (new AssociateModuleToTemplatePage)->execute([
+            'account_id' => $this->author->account_id,
+            'author_id' => $this->author->id,
+            'template_id' => $this->template->id,
+            'template_page_id' => $templatePageInformation->id,
+            'module_id' => $module->id,
+        ]);
+
         // Tasks
         $module = (new CreateModule)->execute([
             'account_id' => $this->author->account_id,

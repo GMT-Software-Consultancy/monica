@@ -5,6 +5,7 @@ namespace Tests\Unit\Domains\Settings\ManageGiftStates\Services;
 use App\Domains\Settings\ManageGiftStates\Services\DestroyGiftState;
 use App\Exceptions\NotEnoughPermissionException;
 use App\Models\Account;
+use App\Models\Gift;
 use App\Models\GiftState;
 use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -70,6 +71,29 @@ class DestroyGiftStateTest extends TestCase
             'account_id' => $ross->account_id,
         ]);
         $this->executeService($ross, $ross->account, $giftState);
+    }
+
+    /** @test */
+    public function it_keeps_the_gifts_that_used_the_gift_state(): void
+    {
+        $ross = $this->createAdministrator();
+        $giftState = GiftState::factory()->create([
+            'account_id' => $ross->account_id,
+        ]);
+        $gift = Gift::factory()->create([
+            'gift_state_id' => $giftState->id,
+            'name' => 'Cookbook',
+            'description' => 'A note',
+        ]);
+
+        $this->executeService($ross, $ross->account, $giftState);
+
+        $this->assertDatabaseHas('gifts', [
+            'id' => $gift->id,
+            'gift_state_id' => null,
+            'name' => 'Cookbook',
+            'description' => 'A note',
+        ]);
     }
 
     private function executeService(User $author, Account $account, GiftState $giftState): void

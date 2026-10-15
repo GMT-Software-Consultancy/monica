@@ -49,6 +49,7 @@ class Vault extends Model
         'show_journal_tab',
         'show_companies_tab',
         'show_calendar_tab',
+        'show_gifts_tab',
     ];
 
     /**
@@ -64,6 +65,7 @@ class Vault extends Model
         'show_journal_tab' => 'boolean',
         'show_companies_tab' => 'boolean',
         'show_reports_tab' => 'boolean',
+        'show_gifts_tab' => 'boolean',
     ];
 
     /**
@@ -191,6 +193,16 @@ class Vault extends Model
     public function loans(): HasMany
     {
         return $this->hasMany(Loan::class);
+    }
+
+    /**
+     * Get the gifts associated with the vault.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<\App\Models\Gift, $this>
+     */
+    public function gifts(): HasMany
+    {
+        return $this->hasMany(Gift::class);
     }
 
     /**
